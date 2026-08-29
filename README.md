@@ -1,2 +1,5 @@
-# leafweb_os_module2
-LeafWeb OS — A modern AI-powered business operating system with website management, automation, chatbot integration, CRM, and deployment tools
+# LEAFWEB OS
+
+Agency website, client portal, and private admin OS.
+
+See `ARCHITECTURE.md`, `DATABASE.md`, `SECURITY.md`, and `DEVELOPMENT.md`.

@@ -1,0 +1,199 @@
+export const PERMISSIONS = {
+  ADMIN_ACCESS: "admin.access",
+  PORTAL_ACCESS: "portal.access",
+
+  CLIENT_READ: "client.read",
+  CLIENT_WRITE: "client.write",
+
+  LEAD_READ: "lead.read",
+  LEAD_WRITE: "lead.write",
+
+  ORDER_READ: "order.read",
+  ORDER_READ_OWN: "order.read.own",
+  ORDER_CREATE: "order.create",
+  ORDER_UPDATE: "order.update",
+  ORDER_APPROVE: "order.approve",
+  ORDER_CONVERT: "order.convert",
+
+  PROJECT_READ: "project.read",
+  PROJECT_READ_OWN: "project.read.own",
+  PROJECT_READ_ASSIGNED: "project.read.assigned",
+  PROJECT_WRITE: "project.write",
+
+  TASK_READ: "task.read",
+  TASK_WRITE: "task.write",
+
+  TEAM_READ: "team.read",
+  TEAM_WRITE: "team.write",
+
+  SERVICE_READ: "service.read",
+  SERVICE_WRITE: "service.write",
+
+  INVOICE_READ: "invoice.read",
+  INVOICE_READ_OWN: "invoice.read.own",
+  INVOICE_WRITE: "invoice.write",
+
+  PAYMENT_READ: "payment.read",
+  PAYMENT_READ_OWN: "payment.read.own",
+  PAYMENT_WRITE: "payment.write",
+  FINANCE_READ: "finance.read",
+
+  MESSAGE_READ: "message.read",
+  MESSAGE_READ_OWN: "message.read.own",
+  MESSAGE_WRITE: "message.write",
+
+  FILE_READ: "file.read",
+  FILE_READ_OWN: "file.read.own",
+  FILE_UPLOAD: "file.upload",
+  FILE_DOWNLOAD: "file.download",
+
+  NOTIFICATION_READ: "notification.read",
+  ANALYTICS_READ: "analytics.read",
+  SETTINGS_WRITE: "settings.write",
+  PERMISSION_WRITE: "permission.write",
+} as const;
+
+export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
+
+export const ROLE_SLUGS = {
+  SUPER_ADMIN: "super_admin",
+  ADMIN: "admin",
+  PROJECT_MANAGER: "project_manager",
+  DEVELOPER: "developer",
+  DESIGNER: "designer",
+  SEO_SPECIALIST: "seo_specialist",
+  AI_AUTOMATION_SPECIALIST: "ai_automation_specialist",
+  SUPPORT: "support",
+  CLIENT: "client",
+} as const;
+
+export type RoleSlug = (typeof ROLE_SLUGS)[keyof typeof ROLE_SLUGS];
+
+export const DEFAULT_ROLE_PERMISSIONS: Record<RoleSlug, PermissionKey[]> = {
+  [ROLE_SLUGS.SUPER_ADMIN]: Object.values(PERMISSIONS),
+  [ROLE_SLUGS.ADMIN]: Object.values(PERMISSIONS).filter(
+    (key) => key !== PERMISSIONS.PERMISSION_WRITE,
+  ),
+  [ROLE_SLUGS.PROJECT_MANAGER]: [
+    PERMISSIONS.ADMIN_ACCESS,
+    PERMISSIONS.CLIENT_READ,
+    PERMISSIONS.LEAD_READ,
+    PERMISSIONS.LEAD_WRITE,
+    PERMISSIONS.ORDER_READ,
+    PERMISSIONS.ORDER_UPDATE,
+    PERMISSIONS.ORDER_APPROVE,
+    PERMISSIONS.ORDER_CONVERT,
+    PERMISSIONS.PROJECT_READ,
+    PERMISSIONS.PROJECT_WRITE,
+    PERMISSIONS.TASK_READ,
+    PERMISSIONS.TASK_WRITE,
+    PERMISSIONS.TEAM_READ,
+    PERMISSIONS.SERVICE_READ,
+    PERMISSIONS.MESSAGE_READ,
+    PERMISSIONS.MESSAGE_WRITE,
+    PERMISSIONS.FILE_READ,
+    PERMISSIONS.FILE_UPLOAD,
+    PERMISSIONS.FILE_DOWNLOAD,
+    PERMISSIONS.NOTIFICATION_READ,
+    PERMISSIONS.ANALYTICS_READ,
+  ],
+  [ROLE_SLUGS.DEVELOPER]: [
+    PERMISSIONS.ADMIN_ACCESS,
+    PERMISSIONS.PROJECT_READ_ASSIGNED,
+    PERMISSIONS.TASK_READ,
+    PERMISSIONS.TASK_WRITE,
+    PERMISSIONS.MESSAGE_READ,
+    PERMISSIONS.MESSAGE_WRITE,
+    PERMISSIONS.FILE_READ,
+    PERMISSIONS.FILE_UPLOAD,
+    PERMISSIONS.FILE_DOWNLOAD,
+    PERMISSIONS.NOTIFICATION_READ,
+  ],
+  [ROLE_SLUGS.DESIGNER]: [
+    PERMISSIONS.ADMIN_ACCESS,
+    PERMISSIONS.PROJECT_READ_ASSIGNED,
+    PERMISSIONS.TASK_READ,
+    PERMISSIONS.TASK_WRITE,
+    PERMISSIONS.MESSAGE_READ,
+    PERMISSIONS.MESSAGE_WRITE,
+    PERMISSIONS.FILE_READ,
+    PERMISSIONS.FILE_UPLOAD,
+    PERMISSIONS.FILE_DOWNLOAD,
+    PERMISSIONS.NOTIFICATION_READ,
+  ],
+  [ROLE_SLUGS.SEO_SPECIALIST]: [
+    PERMISSIONS.ADMIN_ACCESS,
+    PERMISSIONS.PROJECT_READ_ASSIGNED,
+    PERMISSIONS.TASK_READ,
+    PERMISSIONS.TASK_WRITE,
+    PERMISSIONS.MESSAGE_READ,
+    PERMISSIONS.MESSAGE_WRITE,
+    PERMISSIONS.FILE_READ,
+    PERMISSIONS.FILE_DOWNLOAD,
+    PERMISSIONS.NOTIFICATION_READ,
+  ],
+  [ROLE_SLUGS.AI_AUTOMATION_SPECIALIST]: [
+    PERMISSIONS.ADMIN_ACCESS,
+    PERMISSIONS.PROJECT_READ_ASSIGNED,
+    PERMISSIONS.TASK_READ,
+    PERMISSIONS.TASK_WRITE,
+    PERMISSIONS.MESSAGE_READ,
+    PERMISSIONS.MESSAGE_WRITE,
+    PERMISSIONS.FILE_READ,
+    PERMISSIONS.FILE_UPLOAD,
+    PERMISSIONS.FILE_DOWNLOAD,
+    PERMISSIONS.NOTIFICATION_READ,
+  ],
+  [ROLE_SLUGS.SUPPORT]: [
+    PERMISSIONS.ADMIN_ACCESS,
+    PERMISSIONS.CLIENT_READ,
+    PERMISSIONS.LEAD_READ,
+    PERMISSIONS.LEAD_WRITE,
+    PERMISSIONS.ORDER_READ,
+    PERMISSIONS.PROJECT_READ,
+    PERMISSIONS.MESSAGE_READ,
+    PERMISSIONS.MESSAGE_WRITE,
+    PERMISSIONS.FILE_READ,
+    PERMISSIONS.FILE_DOWNLOAD,
+    PERMISSIONS.NOTIFICATION_READ,
+  ],
+  [ROLE_SLUGS.CLIENT]: [
+    PERMISSIONS.PORTAL_ACCESS,
+    PERMISSIONS.ORDER_READ_OWN,
+    PERMISSIONS.ORDER_CREATE,
+    PERMISSIONS.PROJECT_READ_OWN,
+    PERMISSIONS.INVOICE_READ_OWN,
+    PERMISSIONS.PAYMENT_READ_OWN,
+    PERMISSIONS.MESSAGE_READ_OWN,
+    PERMISSIONS.MESSAGE_WRITE,
+    PERMISSIONS.FILE_READ_OWN,
+    PERMISSIONS.FILE_UPLOAD,
+    PERMISSIONS.FILE_DOWNLOAD,
+    PERMISSIONS.NOTIFICATION_READ,
+  ],
+};
+
+export function hasPermission(
+  granted: ReadonlySet<PermissionKey> | readonly PermissionKey[],
+  required: PermissionKey,
+): boolean {
+  return granted instanceof Set
+    ? granted.has(required)
+    : Array.prototype.includes.call(granted, required);
+}
+
+export function assertPermission(
+  granted: ReadonlySet<PermissionKey> | readonly PermissionKey[],
+  required: PermissionKey,
+): void {
+  if (!hasPermission(granted, required)) {
+    throw new AuthorizationError(`Missing permission: ${required}`);
+  }
+}
+
+export class AuthorizationError extends Error {
+  constructor(message = "Not authorized") {
+    super(message);
+    this.name = "AuthorizationError";
+  }
+}
