@@ -21,7 +21,16 @@
     "afterFiles": [],
     "fallback": []
   },
-  "dynamicRoutes": [],
+  "dynamicRoutes": [
+    {
+      "page": "/api/files/[fileId]",
+      "regex": "^/api/files/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPfileId": "nxtPfileId"
+      },
+      "namedRegex": "^/api/files/(?<nxtPfileId>[^/]+?)(?:/)?$"
+    }
+  ],
   "staticRoutes": [
     {
       "page": "/",
@@ -108,10 +117,46 @@
       "namedRegex": "^/admin/search(?:/)?$"
     },
     {
+      "page": "/api/ai/execute",
+      "regex": "^/api/ai/execute(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/ai/execute(?:/)?$"
+    },
+    {
+      "page": "/api/crm/leads",
+      "regex": "^/api/crm/leads(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/crm/leads(?:/)?$"
+    },
+    {
       "page": "/api/files",
       "regex": "^/api/files(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/api/files(?:/)?$"
+    },
+    {
+      "page": "/api/invoices",
+      "regex": "^/api/invoices(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/invoices(?:/)?$"
+    },
+    {
+      "page": "/api/orders",
+      "regex": "^/api/orders(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/orders(?:/)?$"
+    },
+    {
+      "page": "/api/projects",
+      "regex": "^/api/projects(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/projects(?:/)?$"
+    },
+    {
+      "page": "/api/search",
+      "regex": "^/api/search(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/search(?:/)?$"
     },
     {
       "page": "/api/webhooks/payments",

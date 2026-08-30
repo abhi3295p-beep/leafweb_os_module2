@@ -10,11 +10,12 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "db:validate": "prisma validate",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "db:seed": "prisma db seed",
+    "db:seed": "node --experimental-strip-types seed.ts",
     "db:migrate:deploy": "prisma migrate deploy"
   },
   "dependencies": {
@@ -47,8 +48,5 @@
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.11"
-  },
-  "prisma": {
-    "seed": "node --experimental-strip-types prisma/seed.ts"
   }
 }
