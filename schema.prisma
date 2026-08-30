@@ -295,12 +295,12 @@ model Order {
   status        OrderStatus @default(SUBMITTED)
   convertedAt   DateTime?
   projectId     String?     @unique
+  project       Project?    @relation("ProjectOrder", fields: [projectId], references: [id])
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   deletedAt     DateTime?
 
   files    OrderFile[]
-  project  Project?
   messages Message[]
 
   @@index([clientId, status])
@@ -324,7 +324,7 @@ model Project {
   description String
   clientId    String
   client      Client         @relation(fields: [clientId], references: [id])
-  order       Order?
+  order       Order?         @relation("ProjectOrder")
   budget      Decimal?       @db.Decimal(12, 2)
   startDate   DateTime?
   dueDate     DateTime?

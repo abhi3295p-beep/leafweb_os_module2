@@ -1,6 +1,6 @@
 import { randomBytes, scryptSync } from "node:crypto";
 import { PrismaClient, Prisma } from "@prisma/client";
-import { DEFAULT_ROLE_PERMISSIONS, PERMISSIONS, ROLE_SLUGS } from "../src/lib/permissions.ts";
+import { DEFAULT_ROLE_PERMISSIONS, PERMISSIONS, ROLE_SLUGS } from "./src/lib/permissions";
 
 const prisma = new PrismaClient();
 
@@ -144,9 +144,19 @@ async function main(): Promise<void> {
   const superAdminPassword = requiredEnv("SUPER_ADMIN_PASSWORD");
   const superAdminName = requiredEnv("SUPER_ADMIN_NAME");
 
+  const permissionKeys = Object.values(PERMISSIONS) as Array<
+    (typeof PERMISSIONS)[keyof typeof PERMISSIONS]
+  >;
+  const roleSlugs = Object.values(ROLE_SLUGS) as Array<
+    (typeof ROLE_SLUGS)[keyof typeof ROLE_SLUGS]
+  >;
+
   await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    const permissionsByKey = new Map<(typeof PERMISSIONS)[keyof typeof PERMISSIONS], { id: string }>();
-    for (const key of Object.values(PERMISSIONS)) {
+    const permissionsByKey = new Map<
+      (typeof PERMISSIONS)[keyof typeof PERMISSIONS],
+      { id: string }
+    >();
+    for (const key of permissionKeys) {
       const metadata = permissionNames[key];
       const permission = await tx.permission.upsert({
         where: { key },
@@ -157,8 +167,11 @@ async function main(): Promise<void> {
       permissionsByKey.set(key, permission);
     }
 
-    const rolesBySlug = new Map<(typeof ROLE_SLUGS)[keyof typeof ROLE_SLUGS], { id: string }>();
-    for (const slug of Object.values(ROLE_SLUGS)) {
+    const rolesBySlug = new Map<
+      (typeof ROLE_SLUGS)[keyof typeof ROLE_SLUGS],
+      { id: string }
+    >();
+    for (const slug of roleSlugs) {
       const metadata = roleMetadata[slug];
       const role = await tx.role.upsert({
         where: { slug },
@@ -169,10 +182,10 @@ async function main(): Promise<void> {
       rolesBySlug.set(slug, role);
     }
 
-    for (const slug of Object.values(ROLE_SLUGS)) {
+    for (const slug of roleSlugs) {
       const roleId = rolesBySlug.get(slug)!.id;
       const desiredPermissions = new Set(DEFAULT_ROLE_PERMISSIONS[slug]);
-      for (const key of Object.values(PERMISSIONS)) {
+      for (const key of permissionKeys) {
         const permissionId = permissionsByKey.get(key)!.id;
         if (desiredPermissions.has(key)) {
           await tx.rolePermission.upsert({
