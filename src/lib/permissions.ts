@@ -7,6 +7,8 @@ export const PERMISSIONS = {
 
   LEAD_READ: "lead.read",
   LEAD_WRITE: "lead.write",
+  LEAD_ASSIGN: "lead.assign",
+  LEAD_QUALIFY: "lead.qualify",
 
   ORDER_READ: "order.read",
   ORDER_READ_OWN: "order.read.own",
@@ -25,6 +27,10 @@ export const PERMISSIONS = {
 
   TEAM_READ: "team.read",
   TEAM_WRITE: "team.write",
+  TEAM_CREATE: "team.create",
+  TEAM_UPDATE: "team.update",
+  TEAM_DELETE: "team.delete",
+  TEAM_MANAGE_ROLES: "team.manage_roles",
 
   SERVICE_READ: "service.read",
   SERVICE_WRITE: "service.write",
@@ -64,6 +70,7 @@ export const ROLE_SLUGS = {
   SEO_SPECIALIST: "seo_specialist",
   AI_AUTOMATION_SPECIALIST: "ai_automation_specialist",
   SUPPORT: "support",
+  LEAD_GENERATOR: "lead_generator",
   CLIENT: "client",
 } as const;
 
@@ -154,6 +161,20 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<RoleSlug, PermissionKey[]> = {
     PERMISSIONS.MESSAGE_READ,
     PERMISSIONS.MESSAGE_WRITE,
     PERMISSIONS.FILE_READ,
+    PERMISSIONS.FILE_DOWNLOAD,
+    PERMISSIONS.NOTIFICATION_READ,
+  ],
+  [ROLE_SLUGS.LEAD_GENERATOR]: [
+    PERMISSIONS.ADMIN_ACCESS,
+    PERMISSIONS.LEAD_READ,
+    PERMISSIONS.LEAD_WRITE,
+    PERMISSIONS.LEAD_ASSIGN,
+    PERMISSIONS.LEAD_QUALIFY,
+    PERMISSIONS.ORDER_READ_OWN,
+    PERMISSIONS.MESSAGE_READ,
+    PERMISSIONS.MESSAGE_WRITE,
+    PERMISSIONS.FILE_READ,
+    PERMISSIONS.FILE_UPLOAD,
     PERMISSIONS.FILE_DOWNLOAD,
     PERMISSIONS.NOTIFICATION_READ,
   ],

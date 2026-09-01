@@ -1,6 +1,7 @@
 import { SiteFooter, SiteHeader } from "@/components/site/chrome";
 import { canUserAccess, requireAuthenticatedUser } from "@/lib/auth";
 import { PERMISSIONS } from "@/lib/permissions";
+import { prisma } from "../../../db";
 
 export default async function PortalPage() {
   const user = await requireAuthenticatedUser();
@@ -37,6 +38,12 @@ export default async function PortalPage() {
     );
   }
 
+  const [projectCount, invoiceCount, taskCount] = await Promise.all([
+    prisma.project.count({ where: { clientId: user.clientId ?? "" } }),
+    prisma.invoice.count({ where: { clientId: user.clientId ?? "" } }),
+    prisma.task.count({ where: { project: { clientId: user.clientId ?? "" } } }),
+  ]);
+
   return (
     <div className="flex min-h-full flex-col">
       <SiteHeader />
@@ -54,15 +61,15 @@ export default async function PortalPage() {
         <div className="mt-10 grid gap-6 md:grid-cols-3">
           <div className="rounded-3xl border border-line bg-panel p-6">
             <p className="text-sm text-mist">Projects</p>
-            <p className="mt-4 text-3xl font-display text-foam">3</p>
+            <p className="mt-4 text-3xl font-display text-foam">{projectCount}</p>
           </div>
           <div className="rounded-3xl border border-line bg-panel p-6">
             <p className="text-sm text-mist">Invoices</p>
-            <p className="mt-4 text-3xl font-display text-foam">2</p>
+            <p className="mt-4 text-3xl font-display text-foam">{invoiceCount}</p>
           </div>
           <div className="rounded-3xl border border-line bg-panel p-6">
             <p className="text-sm text-mist">Tasks</p>
-            <p className="mt-4 text-3xl font-display text-foam">5</p>
+            <p className="mt-4 text-3xl font-display text-foam">{taskCount}</p>
           </div>
         </div>
       </main>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, IBM_Plex_Mono, Fraunces } from "next/font/google";
 import { ToastProvider } from "@/components/ui/toast";
+import { SITE_CONFIG } from "@/lib/site-config";
 import "./globals.css";
 
 type RootLayoutProps = Readonly<{ children: React.ReactNode }>;
@@ -22,9 +23,21 @@ const mono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "LEAFWEB — Build Smarter. Automate Faster. Grow Bigger.",
+  title: "LEAFWEB — Premium Websites, AI Automations & Digital Solutions",
   description:
-    "Building premium websites, AI automations and digital solutions.",
+    "LeafWeb builds premium websites, AI automations, custom digital solutions, client portals, and business operating systems.",
+  openGraph: {
+    title: "LEAFWEB — Premium Websites, AI Automations & Digital Solutions",
+    description:
+      "LeafWeb builds premium websites, AI automations, custom digital solutions, client portals, and business operating systems.",
+    siteName: SITE_CONFIG.brand,
+    type: "website",
+  },
+  icons: {
+    icon: "/branding/leafweb-logo.png",
+    shortcut: "/branding/leafweb-logo.png",
+    apple: "/branding/leafweb-logo.png",
+  },
 };
 
 export default function RootLayout({

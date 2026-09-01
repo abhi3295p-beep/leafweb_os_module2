@@ -1,6 +1,8 @@
+import { randomBytes } from "node:crypto";
+
 import { prisma } from "../../db";
 
-import type { AuthenticatedUser } from "@/lib/auth";
+import { hashPassword, type AuthenticatedUser } from "@/lib/auth";
 import { PERMISSIONS } from "@/lib/permissions";
 import { ensureClientAccess, ensurePermission, requireDatabase } from "@/lib/db-guard";
 
@@ -76,7 +78,13 @@ export async function updateLeadStatus(
 export async function convertLeadToClientRecord(
   user: AuthenticatedUser,
   leadId: string,
-  input: { companyName?: string | null; phone?: string | null; website?: string | null; notes?: string | null },
+  input: {
+    companyName?: string | null;
+    phone?: string | null;
+    website?: string | null;
+    notes?: string | null;
+    password?: string | null;
+  },
 ) {
   requireDatabase();
   ensurePermission(user, PERMISSIONS.ORDER_CONVERT);
@@ -86,6 +94,9 @@ export async function convertLeadToClientRecord(
   if (lead.status !== "QUALIFIED" && lead.status !== "PROPOSAL") {
     throw new Error("Lead must be qualified before conversion");
   }
+
+  const temporaryPassword = input.password?.trim() || randomBytes(18).toString("base64url");
+  const passwordHash = await hashPassword(temporaryPassword);
 
   const client = lead.clientId
     ? await prisma.client.findUnique({ where: { id: lead.clientId } })
@@ -98,7 +109,7 @@ export async function convertLeadToClientRecord(
           user: {
             create: {
               email: lead.email,
-              passwordHash: "placeholder-hash",
+              passwordHash,
               name: lead.name,
               role: {
                 connect: { slug: "client" },
@@ -120,7 +131,7 @@ export async function convertLeadToClientRecord(
     },
   });
 
-  return { client, lead: updatedLead };
+  return { client, lead: updatedLead, generatedPassword: temporaryPassword };
 }
 
 export async function deleteLeadRecord(user: AuthenticatedUser, leadId: string) {

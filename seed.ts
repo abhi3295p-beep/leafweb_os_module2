@@ -1,6 +1,6 @@
-import { randomBytes, scryptSync } from "node:crypto";
+import bcrypt from "bcryptjs";
 import { PrismaClient, Prisma } from "@prisma/client";
-import { DEFAULT_ROLE_PERMISSIONS, PERMISSIONS, ROLE_SLUGS } from "./src/lib/permissions";
+import { DEFAULT_ROLE_PERMISSIONS, PERMISSIONS, ROLE_SLUGS } from "./src/lib/permissions.ts";
 
 const prisma = new PrismaClient();
 
@@ -11,6 +11,8 @@ const permissionNames: Record<(typeof PERMISSIONS)[keyof typeof PERMISSIONS], { 
   [PERMISSIONS.CLIENT_WRITE]: { name: "Write clients", description: "Create and update client records." },
   [PERMISSIONS.LEAD_READ]: { name: "Read leads", description: "Read CRM leads." },
   [PERMISSIONS.LEAD_WRITE]: { name: "Write leads", description: "Create and update CRM leads." },
+  [PERMISSIONS.LEAD_ASSIGN]: { name: "Assign leads", description: "Assign leads to team members." },
+  [PERMISSIONS.LEAD_QUALIFY]: { name: "Qualify leads", description: "Mark leads as qualified." },
   [PERMISSIONS.ORDER_READ]: { name: "Read orders", description: "Read all orders permitted by role." },
   [PERMISSIONS.ORDER_READ_OWN]: { name: "Read own orders", description: "Read orders owned by the authenticated client." },
   [PERMISSIONS.ORDER_CREATE]: { name: "Create orders", description: "Create new orders." },
@@ -25,6 +27,10 @@ const permissionNames: Record<(typeof PERMISSIONS)[keyof typeof PERMISSIONS], { 
   [PERMISSIONS.TASK_WRITE]: { name: "Write tasks", description: "Create and update project tasks." },
   [PERMISSIONS.TEAM_READ]: { name: "Read team", description: "Read team members." },
   [PERMISSIONS.TEAM_WRITE]: { name: "Write team", description: "Create and update team members." },
+  [PERMISSIONS.TEAM_CREATE]: { name: "Create team members", description: "Create team member accounts." },
+  [PERMISSIONS.TEAM_UPDATE]: { name: "Update team members", description: "Update team member accounts." },
+  [PERMISSIONS.TEAM_DELETE]: { name: "Delete team members", description: "Delete team member accounts when safe." },
+  [PERMISSIONS.TEAM_MANAGE_ROLES]: { name: "Manage team roles", description: "Assign roles to team members." },
   [PERMISSIONS.SERVICE_READ]: { name: "Read services", description: "Read service catalog data." },
   [PERMISSIONS.SERVICE_WRITE]: { name: "Write services", description: "Create and update services and packages." },
   [PERMISSIONS.INVOICE_READ]: { name: "Read invoices", description: "Read invoices across permitted scope." },
@@ -56,6 +62,7 @@ const roleMetadata: Record<(typeof ROLE_SLUGS)[keyof typeof ROLE_SLUGS], { name:
   [ROLE_SLUGS.SEO_SPECIALIST]: { name: "SEO Specialist", description: "Works on assigned projects and SEO delivery tasks." },
   [ROLE_SLUGS.AI_AUTOMATION_SPECIALIST]: { name: "AI Automation Specialist", description: "Works on assigned projects and automation delivery tasks." },
   [ROLE_SLUGS.SUPPORT]: { name: "Support", description: "Handles client support, CRM, communication, and project visibility." },
+  [ROLE_SLUGS.LEAD_GENERATOR]: { name: "Lead Generator", description: "Generates, qualifies, and manages leads for the sales pipeline." },
   [ROLE_SLUGS.CLIENT]: { name: "Client", description: "Portal role restricted to the authenticated client's own data." },
 };
 
@@ -134,9 +141,7 @@ function requiredEnv(name: string): string {
 
 function hashPassword(password: string): string {
   if (password.length < 12) throw new Error("SUPER_ADMIN_PASSWORD must be at least 12 characters long.");
-  const salt = randomBytes(16).toString("hex");
-  const hash = scryptSync(password, salt, 64).toString("hex");
-  return `scrypt$${salt}$${hash}`;
+  return bcrypt.hashSync(password, 12);
 }
 
 async function main(): Promise<void> {
@@ -151,114 +156,117 @@ async function main(): Promise<void> {
     (typeof ROLE_SLUGS)[keyof typeof ROLE_SLUGS]
   >;
 
-  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    const permissionsByKey = new Map<
-      (typeof PERMISSIONS)[keyof typeof PERMISSIONS],
-      { id: string }
-    >();
-    for (const key of permissionKeys) {
-      const metadata = permissionNames[key];
-      const permission = await tx.permission.upsert({
-        where: { key },
-        update: { name: metadata.name, description: metadata.description },
-        create: { key, name: metadata.name, description: metadata.description },
-        select: { id: true },
-      });
-      permissionsByKey.set(key, permission);
-    }
-
-    const rolesBySlug = new Map<
-      (typeof ROLE_SLUGS)[keyof typeof ROLE_SLUGS],
-      { id: string }
-    >();
-    for (const slug of roleSlugs) {
-      const metadata = roleMetadata[slug];
-      const role = await tx.role.upsert({
-        where: { slug },
-        update: { name: metadata.name, description: metadata.description, isSystem: true },
-        create: { slug, name: metadata.name, description: metadata.description, isSystem: true },
-        select: { id: true },
-      });
-      rolesBySlug.set(slug, role);
-    }
-
-    for (const slug of roleSlugs) {
-      const roleId = rolesBySlug.get(slug)!.id;
-      const desiredPermissions = new Set(DEFAULT_ROLE_PERMISSIONS[slug]);
+  await prisma.$transaction(
+    async (tx: Prisma.TransactionClient) => {
+      const permissionsByKey = new Map<
+        (typeof PERMISSIONS)[keyof typeof PERMISSIONS],
+        { id: string }
+      >();
       for (const key of permissionKeys) {
-        const permissionId = permissionsByKey.get(key)!.id;
-        if (desiredPermissions.has(key)) {
-          await tx.rolePermission.upsert({
-            where: { roleId_permissionId: { roleId, permissionId } },
-            update: {},
-            create: { roleId, permissionId },
-          });
-        } else {
-          await tx.rolePermission.deleteMany({ where: { roleId, permissionId } });
-        }
-      }
-    }
-
-    for (const serviceData of services) {
-      const service = await tx.service.upsert({
-        where: { slug: serviceData.slug },
-        update: {
-          name: serviceData.name,
-          summary: serviceData.summary,
-          description: serviceData.description,
-          features: [...serviceData.features],
-          technologies: [...serviceData.technologies],
-          timeline: serviceData.timeline,
-          startingPrice: serviceData.startingPrice,
-          currency: "INR",
-          isActive: true,
-          sortOrder: serviceData.sortOrder,
-        },
-        create: {
-          slug: serviceData.slug,
-          name: serviceData.name,
-          summary: serviceData.summary,
-          description: serviceData.description,
-          features: [...serviceData.features],
-          technologies: [...serviceData.technologies],
-          timeline: serviceData.timeline,
-          startingPrice: serviceData.startingPrice,
-          currency: "INR",
-          isActive: true,
-          sortOrder: serviceData.sortOrder,
-        },
-        select: { id: true },
-      });
-
-      for (const packageData of serviceData.packages) {
-        const existing = await tx.package.findFirst({
-          where: { serviceId: service.id, name: packageData.name },
+        const metadata = permissionNames[key];
+        const permission = await tx.permission.upsert({
+          where: { key },
+          update: { name: metadata.name, description: metadata.description },
+          create: { key, name: metadata.name, description: metadata.description },
           select: { id: true },
         });
-        const data = {
-          serviceId: service.id,
-          name: packageData.name,
-          description: packageData.description,
-          price: packageData.price,
-          currency: "INR",
-          features: [...packageData.features],
-          isActive: true,
-          sortOrder: packageData.sortOrder,
-        };
-        if (existing) await tx.package.update({ where: { id: existing.id }, data });
-        else await tx.package.create({ data });
+        permissionsByKey.set(key, permission);
       }
-    }
 
-    const superAdminRoleId = rolesBySlug.get(ROLE_SLUGS.SUPER_ADMIN)!.id;
-    const passwordHash = hashPassword(superAdminPassword);
-    const existingUser = await tx.user.findUnique({ where: { email: superAdminEmail }, select: { id: true } });
-    if (existingUser) {
-      await tx.user.update({ where: { id: existingUser.id }, data: { name: superAdminName, roleId: superAdminRoleId, passwordHash, deletedAt: null } });
-    } else {
-      await tx.user.create({ data: { email: superAdminEmail, passwordHash, name: superAdminName, roleId: superAdminRoleId } });
-    }
-  });
+      const rolesBySlug = new Map<
+        (typeof ROLE_SLUGS)[keyof typeof ROLE_SLUGS],
+        { id: string }
+      >();
+      for (const slug of roleSlugs) {
+        const metadata = roleMetadata[slug];
+        const role = await tx.role.upsert({
+          where: { slug },
+          update: { name: metadata.name, description: metadata.description, isSystem: true },
+          create: { slug, name: metadata.name, description: metadata.description, isSystem: true },
+          select: { id: true },
+        });
+        rolesBySlug.set(slug, role);
+      }
+
+      for (const slug of roleSlugs) {
+        const roleId = rolesBySlug.get(slug)!.id;
+        const desiredPermissions = new Set(DEFAULT_ROLE_PERMISSIONS[slug]);
+        for (const key of permissionKeys) {
+          const permissionId = permissionsByKey.get(key)!.id;
+          if (desiredPermissions.has(key)) {
+            await tx.rolePermission.upsert({
+              where: { roleId_permissionId: { roleId, permissionId } },
+              update: {},
+              create: { roleId, permissionId },
+            });
+          } else {
+            await tx.rolePermission.deleteMany({ where: { roleId, permissionId } });
+          }
+        }
+      }
+
+      for (const serviceData of services) {
+        const service = await tx.service.upsert({
+          where: { slug: serviceData.slug },
+          update: {
+            name: serviceData.name,
+            summary: serviceData.summary,
+            description: serviceData.description,
+            features: [...serviceData.features],
+            technologies: [...serviceData.technologies],
+            timeline: serviceData.timeline,
+            startingPrice: serviceData.startingPrice,
+            currency: "INR",
+            isActive: true,
+            sortOrder: serviceData.sortOrder,
+          },
+          create: {
+            slug: serviceData.slug,
+            name: serviceData.name,
+            summary: serviceData.summary,
+            description: serviceData.description,
+            features: [...serviceData.features],
+            technologies: [...serviceData.technologies],
+            timeline: serviceData.timeline,
+            startingPrice: serviceData.startingPrice,
+            currency: "INR",
+            isActive: true,
+            sortOrder: serviceData.sortOrder,
+          },
+          select: { id: true },
+        });
+
+        for (const packageData of serviceData.packages) {
+          const existing = await tx.package.findFirst({
+            where: { serviceId: service.id, name: packageData.name },
+            select: { id: true },
+          });
+          const data = {
+            serviceId: service.id,
+            name: packageData.name,
+            description: packageData.description,
+            price: packageData.price,
+            currency: "INR",
+            features: [...packageData.features],
+            isActive: true,
+            sortOrder: packageData.sortOrder,
+          };
+          if (existing) await tx.package.update({ where: { id: existing.id }, data });
+          else await tx.package.create({ data });
+        }
+      }
+
+      const superAdminRoleId = rolesBySlug.get(ROLE_SLUGS.SUPER_ADMIN)!.id;
+      const passwordHash = hashPassword(superAdminPassword);
+      const existingUser = await tx.user.findUnique({ where: { email: superAdminEmail }, select: { id: true } });
+      if (existingUser) {
+        await tx.user.update({ where: { id: existingUser.id }, data: { name: superAdminName, roleId: superAdminRoleId, passwordHash, deletedAt: null } });
+      } else {
+        await tx.user.create({ data: { email: superAdminEmail, passwordHash, name: superAdminName, roleId: superAdminRoleId } });
+      }
+    },
+    { timeout: 120000, maxWait: 120000 },
+  );
 
   console.log("Seed complete: roles, permissions, role permissions, services, packages, and Super Admin are ready.");
 }

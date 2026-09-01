@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { jwtVerify, SignJWT } from "jose";
 import bcrypt from "bcryptjs";
+import { scryptSync, timingSafeEqual } from "node:crypto";
 
 import { PERMISSIONS, type PermissionKey } from "@/lib/permissions";
 import { prisma } from "../../db";
@@ -19,7 +20,10 @@ export type AuthenticatedUser = {
 const SESSION_COOKIE = "leafweb_session";
 
 function getAuthSecret(): Uint8Array {
-  const secret = process.env.AUTH_SECRET ?? "leafweb-local-development-secret";
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) {
+    throw new Error("AUTH_SECRET is required in production. Configure a secure application secret before deployment.");
+  }
   return new TextEncoder().encode(secret);
 }
 
@@ -31,7 +35,22 @@ export async function verifyPassword(
   providedPassword: string,
   storedHash: string,
 ): Promise<boolean> {
-  return bcrypt.compare(providedPassword, storedHash);
+  if (storedHash.startsWith("$2")) {
+    return bcrypt.compare(providedPassword, storedHash);
+  }
+
+  const legacyParts = storedHash.split("$");
+  if (legacyParts.length !== 3 || legacyParts[0] !== "scrypt") {
+    return false;
+  }
+
+  const [, salt, expectedHex] = legacyParts;
+  if (!/^[a-f0-9]+$/i.test(salt) || !/^[a-f0-9]{128}$/i.test(expectedHex)) {
+    return false;
+  }
+
+  const actual = scryptSync(providedPassword, salt, 64).toString("hex");
+  return timingSafeEqual(Buffer.from(actual, "hex"), Buffer.from(expectedHex, "hex"));
 }
 
 export async function createSessionToken(userId: string): Promise<string> {
@@ -42,6 +61,21 @@ export async function createSessionToken(userId: string): Promise<string> {
     .sign(getAuthSecret());
 
   return token;
+}
+
+export async function findUserForLogin(email: string) {
+  const normalizedEmail = email.trim().toLowerCase();
+
+  return prisma.user.findFirst({
+    where: { email: { equals: normalizedEmail, mode: "insensitive" } },
+    select: {
+      id: true,
+      email: true,
+      passwordHash: true,
+      deletedAt: true,
+      role: { select: { slug: true } },
+    },
+  });
 }
 
 export async function verifySessionToken(token: string): Promise<{ sub: string }> {
@@ -85,12 +119,24 @@ export async function getCurrentAuthenticatedUser(): Promise<AuthenticatedUser |
 
     const user = await prisma.user.findUnique({
       where: { id: session.sub },
-      include: {
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        roleId: true,
+        deletedAt: true,
+        client: { select: { id: true } },
+        teamMember: { select: { id: true } },
         role: {
-          include: { permissions: { include: { permission: true } } },
+          select: {
+            slug: true,
+            permissions: {
+              select: {
+                permission: { select: { key: true } },
+              },
+            },
+          },
         },
-        client: true,
-        teamMember: true,
       },
     });
 

@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { SiteFooter, SiteHeader } from "@/components/site/chrome";
 import { canUserAccess, requireAuthenticatedUser } from "@/lib/auth";
 import { PERMISSIONS } from "@/lib/permissions";
+import { prisma } from "../../../db";
 
 export default async function AdminPage() {
   const user = await requireAuthenticatedUser();
@@ -37,6 +39,12 @@ export default async function AdminPage() {
     );
   }
 
+  const [leadCount, projectCount, invoiceCount] = await Promise.all([
+    prisma.lead.count(),
+    prisma.project.count(),
+    prisma.invoice.count({ where: { status: { not: "PAID" } } }),
+  ]);
+
   return (
     <div className="flex min-h-full flex-col">
       <SiteHeader />
@@ -54,16 +62,28 @@ export default async function AdminPage() {
         <div className="mt-10 grid gap-6 md:grid-cols-3">
           <div className="rounded-3xl border border-line bg-panel p-6">
             <p className="text-sm text-mist">Leads</p>
-            <p className="mt-4 text-3xl font-display text-foam">24</p>
+            <p className="mt-4 text-3xl font-display text-foam">{leadCount}</p>
           </div>
           <div className="rounded-3xl border border-line bg-panel p-6">
             <p className="text-sm text-mist">Open projects</p>
-            <p className="mt-4 text-3xl font-display text-foam">8</p>
+            <p className="mt-4 text-3xl font-display text-foam">{projectCount}</p>
           </div>
           <div className="rounded-3xl border border-line bg-panel p-6">
             <p className="text-sm text-mist">Invoices due</p>
-            <p className="mt-4 text-3xl font-display text-foam">3</p>
+            <p className="mt-4 text-3xl font-display text-foam">{invoiceCount}</p>
           </div>
+          {user.permissions.includes(PERMISSIONS.TEAM_READ) && (
+            <Link
+              href="/admin/team"
+              className="group rounded-3xl border border-leaf/40 bg-panel p-6 transition-colors hover:border-leaf hover:bg-leaf/10"
+            >
+              <p className="text-sm text-mist">Operations</p>
+              <p className="mt-4 font-display text-2xl text-foam">Team Management</p>
+              <p className="mt-2 text-sm text-mist group-hover:text-foam">
+                Manage team members, roles, access, and account status.
+              </p>
+            </Link>
+          )}
         </div>
       </main>
       <SiteFooter />
