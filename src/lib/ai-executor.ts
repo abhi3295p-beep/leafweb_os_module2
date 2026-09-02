@@ -1,7 +1,7 @@
-﻿"use server";
+"use server";
 
 const OLLAMA_URL = process.env.OLLAMA_URL ?? "http://localhost:11434";
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? "qwen3:8b";
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? "qwen3:4b";
 
 export type AIExecutorInput = {
   system?: string;
@@ -20,29 +20,37 @@ export async function executeLocalAI(
 ): Promise<AIExecutorResult> {
   const startedAt = Date.now();
 
-  const response = await fetch(`${OLLAMA_URL}/api/chat`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: OLLAMA_MODEL,
-      stream: false,
-      messages: [
-        ...(input.system
-          ? [{ role: "system", content: input.system }]
-          : []),
-        {
-          role: "user",
-          content: input.prompt,
-        },
-      ],
-      options: {
-        temperature: input.temperature ?? 0.2,
+  let response: Response;
+
+  try {
+    response = await fetch(`${OLLAMA_URL}/api/chat`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
-    }),
-    cache: "no-store",
-  });
+      body: JSON.stringify({
+        model: OLLAMA_MODEL,
+        stream: false,
+        messages: [
+          ...(input.system
+            ? [{ role: "system", content: input.system }]
+            : []),
+          {
+            role: "user",
+            content: input.prompt,
+          },
+        ],
+        options: {
+          temperature: input.temperature ?? 0.2,
+        },
+      }),
+      cache: "no-store",
+    });
+  } catch {
+    throw new Error(
+      "Local AI is unavailable. Ollama must be running and reachable from the application server.",
+    );
+  }
 
   if (!response.ok) {
     const errorText = await response.text();
