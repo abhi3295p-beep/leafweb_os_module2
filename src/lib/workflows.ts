@@ -14,7 +14,7 @@ export type WorkflowLead = {
   email: string;
   company?: string | null;
   message: string;
-  status: "NEW" | "CONTACTED" | "QUALIFIED" | "PROPOSAL" | "WON" | "LOST";
+  status: "NEW" | "CONTACTED" | "QUALIFIED" | "MEETING_BOOKED" | "PROPOSAL_SENT" | "WON" | "LOST";
   serviceId?: string | null;
   clientId?: string | null;
 };
@@ -69,7 +69,7 @@ export function convertLeadToClient(
   clientId: string,
 ): { leadId: string; clientId: string; convertedAt: string; status: "WON" } {
   assertClientAccess(actor, clientId);
-  if (lead.status !== "QUALIFIED" && lead.status !== "PROPOSAL") {
+  if (lead.status !== "QUALIFIED" && lead.status !== "PROPOSAL_SENT") {
     throw new AuthorizationError("Lead must be qualified before conversion");
   }
 

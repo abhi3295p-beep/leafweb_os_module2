@@ -57,7 +57,7 @@ export async function createLeadRecord(
 export async function updateLeadStatus(
   user: AuthenticatedUser,
   leadId: string,
-  input: { status: "NEW" | "CONTACTED" | "QUALIFIED" | "PROPOSAL" | "WON" | "LOST"; clientId?: string | null },
+  input: { status: "NEW" | "CONTACTED" | "QUALIFIED" | "MEETING_BOOKED" | "PROPOSAL_SENT" | "WON" | "LOST"; clientId?: string | null },
 ) {
   requireDatabase();
   ensurePermission(user, PERMISSIONS.LEAD_WRITE);
@@ -91,7 +91,7 @@ export async function convertLeadToClientRecord(
 
   const lead = await prisma.lead.findUnique({ where: { id: leadId } });
   if (!lead) throw new Error("Lead not found");
-  if (lead.status !== "QUALIFIED" && lead.status !== "PROPOSAL") {
+  if (lead.status !== "QUALIFIED" && lead.status !== "PROPOSAL_SENT") {
     throw new Error("Lead must be qualified before conversion");
   }
 

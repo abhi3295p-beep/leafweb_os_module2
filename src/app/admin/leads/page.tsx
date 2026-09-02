@@ -1,11 +1,15 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { canUserAccess, requireAuthenticatedUser } from "@/lib/auth";
 import { PERMISSIONS, ROLE_SLUGS } from "@/lib/permissions";
 import { prisma } from "../../../../db";
 
-export default async function LeadsPage() {
+export default async function LeadsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string; qualification?: string }>;
+}) {
   const user = await requireAuthenticatedUser();
 
   if (!user) {
@@ -38,53 +42,86 @@ export default async function LeadsPage() {
     );
   }
 
-  const isLeadGenerator =
-    user.roleSlug === ROLE_SLUGS.LEAD_GENERATOR;
+  const params = await searchParams;
+  const isLeadGenerator = user.roleSlug === ROLE_SLUGS.LEAD_GENERATOR;
 
-  const where: {
-    clientId?: string;
-  } = {};
+  const where: any = {};
 
   if (user.clientId) {
     where.clientId = user.clientId;
+  } else if (isLeadGenerator) {
+    where.assignedToId = user.id;
   }
 
-  const [leads, newLeadsCount, qualifiedLeadsCount, totalLeads] =
-    await Promise.all([
-      prisma.lead.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        take: 15,
-        select: {
-          id: true,
-          name: true,
-          status: true,
-          company: true,
-          email: true,
-          phone: true,
-          message: true,
-          createdAt: true,
-        },
-      }),
+  if (params.status) {
+    where.status = params.status;
+  }
 
-      prisma.lead.count({
-        where: {
-          ...where,
-          status: "NEW",
-        },
-      }),
+  if (params.qualification) {
+    where.qualification = params.qualification;
+  }
 
-      prisma.lead.count({
-        where: {
-          ...where,
-          status: "QUALIFIED",
+  const [
+    leads,
+    totalCount,
+    newCount,
+    contactedCount,
+    qualifiedCount,
+    convertedCount,
+    lostCount,
+    followUpsDueCount,
+  ] = await Promise.all([
+    prisma.lead.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    }),
+    prisma.lead.count({ where }),
+    prisma.lead.count({ where: { ...where, status: "NEW" } }),
+    prisma.lead.count({ where: { ...where, status: "CONTACTED" } }),
+    prisma.lead.count({ where: { ...where, qualification: "QUALIFIED" } }),
+    prisma.lead.count({ where: { ...where, status: "WON" } }),
+    prisma.lead.count({ where: { ...where, status: "LOST" } }),
+    prisma.lead.count({
+      where: {
+        ...where,
+        nextFollowUpAt: {
+          lte: new Date(),
         },
-      }),
+      },
+    }),
+  ]);
 
-      prisma.lead.count({
-        where,
-      }),
-    ]);
+  const assignedIds = [
+    ...new Set(
+      leads
+        .map((lead) => lead.assignedToId)
+        .filter((id): id is string => Boolean(id))
+    ),
+  ];
+
+  const assignedUsers =
+    assignedIds.length > 0
+      ? await prisma.user.findMany({
+          where: {
+            id: { in: assignedIds },
+          },
+          select: {
+            id: true,
+            name: true,
+          },
+        })
+      : [];
+
+  const assignedUserMap = new Map(
+    assignedUsers.map((assignedUser) => [
+      assignedUser.id,
+      assignedUser.name,
+    ])
+  );
+
+  const conversionRate =
+    totalCount > 0 ? Math.round((convertedCount / totalCount) * 100) : 0;
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-16">
@@ -96,8 +133,8 @@ export default async function LeadsPage() {
 
           <p className="mt-2 text-mist">
             {isLeadGenerator
-              ? `You have ${totalLeads} leads`
-              : `Manage ${totalLeads} leads in the pipeline`}
+              ? `You have ${totalCount} leads in your pipeline`
+              : `Managing ${totalCount} leads across all generators`}
           </p>
         </div>
 
@@ -111,46 +148,150 @@ export default async function LeadsPage() {
         )}
       </div>
 
-      {/* Stats */}
-      <div className="mb-8 grid gap-4 md:grid-cols-3">
+      <div className="mb-8 grid gap-4 md:grid-cols-4">
         <Card className="p-4">
           <div className="text-xs uppercase tracking-[0.22em] text-mist">
             Total Leads
           </div>
-
-          <div className="mt-2 text-3xl font-bold text-leaf">
-            {totalLeads}
-          </div>
+          <div className="mt-2 text-3xl font-bold text-leaf">{totalCount}</div>
         </Card>
 
         <Card className="p-4">
           <div className="text-xs uppercase tracking-[0.22em] text-mist">
-            New Leads
+            New
           </div>
-
-          <div className="mt-2 text-3xl font-bold text-gold">
-            {newLeadsCount}
-          </div>
+          <div className="mt-2 text-3xl font-bold text-gold">{newCount}</div>
         </Card>
 
         <Card className="p-4">
           <div className="text-xs uppercase tracking-[0.22em] text-mist">
             Qualified
           </div>
-
           <div className="mt-2 text-3xl font-bold text-green-400">
-            {qualifiedLeadsCount}
+            {qualifiedCount}
+          </div>
+        </Card>
+
+        <Card className="p-4">
+          <div className="text-xs uppercase tracking-[0.22em] text-mist">
+            Won
+          </div>
+          <div className="mt-2 text-3xl font-bold text-leaf-strong">
+            {convertedCount}
           </div>
         </Card>
       </div>
 
-      {/* Leads Table */}
+      <div className="mb-8 grid gap-4 md:grid-cols-4">
+        <Card className="p-4">
+          <div className="text-xs uppercase tracking-[0.22em] text-mist">
+            Contacted
+          </div>
+          <div className="mt-2 text-2xl font-bold text-foam">
+            {contactedCount}
+          </div>
+        </Card>
+
+        <Card className="p-4">
+          <div className="text-xs uppercase tracking-[0.22em] text-mist">
+            Lost
+          </div>
+          <div className="mt-2 text-2xl font-bold text-rose-400">
+            {lostCount}
+          </div>
+        </Card>
+
+        <Card className="p-4">
+          <div className="text-xs uppercase tracking-[0.22em] text-mist">
+            Follow-ups Due
+          </div>
+          <div className="mt-2 text-2xl font-bold text-gold">
+            {followUpsDueCount}
+          </div>
+        </Card>
+
+        <Card className="p-4">
+          <div className="text-xs uppercase tracking-[0.22em] text-mist">
+            Conversion Rate
+          </div>
+          <div className="mt-2 text-2xl font-bold text-leaf">
+            {conversionRate}%
+          </div>
+        </Card>
+      </div>
+
+      <div className="mb-8 flex flex-wrap gap-2">
+        <Link
+          href="/admin/leads"
+          className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+            !params.status && !params.qualification
+              ? "bg-leaf text-ink"
+              : "border border-line text-foam hover:bg-ink/20"
+          }`}
+        >
+          All
+        </Link>
+
+        <Link
+          href="/admin/leads?status=NEW"
+          className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+            params.status === "NEW"
+              ? "bg-gold text-ink"
+              : "border border-line text-foam hover:bg-ink/20"
+          }`}
+        >
+          New
+        </Link>
+
+        <Link
+          href="/admin/leads?status=CONTACTED"
+          className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+            params.status === "CONTACTED"
+              ? "bg-foam text-ink"
+              : "border border-line text-foam hover:bg-ink/20"
+          }`}
+        >
+          Contacted
+        </Link>
+
+        <Link
+          href="/admin/leads?qualification=QUALIFIED"
+          className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+            params.qualification === "QUALIFIED"
+              ? "bg-green-400 text-ink"
+              : "border border-line text-foam hover:bg-ink/20"
+          }`}
+        >
+          Qualified
+        </Link>
+
+        <Link
+          href="/admin/leads?status=WON"
+          className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+            params.status === "WON"
+              ? "bg-leaf-strong text-ink"
+              : "border border-line text-foam hover:bg-ink/20"
+          }`}
+        >
+          Won
+        </Link>
+
+        <Link
+          href="/admin/leads?status=LOST"
+          className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+            params.status === "LOST"
+              ? "bg-rose-400 text-ink"
+              : "border border-line text-foam hover:bg-ink/20"
+          }`}
+        >
+          Lost
+        </Link>
+      </div>
+
       {leads.length === 0 ? (
         <div className="mt-8 rounded-3xl border border-line bg-panel p-8 text-center">
           <p className="text-mist">
-            {isLeadGenerator
-              ? "No leads assigned to you yet."
-              : "No leads in this view."}
+            {isLeadGenerator ? "No leads in this filter." : "No leads found."}
           </p>
         </div>
       ) : (
@@ -161,23 +302,27 @@ export default async function LeadsPage() {
                 <th className="px-4 py-3 text-left font-medium text-mist">
                   Lead Name
                 </th>
-
                 <th className="px-4 py-3 text-left font-medium text-mist">
                   Company
                 </th>
-
                 <th className="px-4 py-3 text-left font-medium text-mist">
                   Email
                 </th>
-
                 <th className="px-4 py-3 text-left font-medium text-mist">
                   Status
                 </th>
-
+                <th className="px-4 py-3 text-left font-medium text-mist">
+                  Qual.
+                </th>
+                <th className="px-4 py-3 text-left font-medium text-mist">
+                  Score
+                </th>
+                <th className="px-4 py-3 text-left font-medium text-mist">
+                  Assigned To
+                </th>
                 <th className="px-4 py-3 text-left font-medium text-mist">
                   Created
                 </th>
-
                 <th className="px-4 py-3 text-left font-medium text-mist">
                   Action
                 </th>
@@ -185,54 +330,86 @@ export default async function LeadsPage() {
             </thead>
 
             <tbody>
-              {leads.map((lead) => (
-                <tr
-                  key={lead.id}
-                  className="border-b border-line/30 hover:bg-ink/40"
-                >
-                  <td className="px-4 py-3 text-foam">
-                    <Link
-                      href={`/admin/leads/${lead.id}`}
-                      className="hover:underline"
-                    >
-                      {lead.name}
-                    </Link>
-                  </td>
+              {leads.map((lead) => {
+                const qualification = lead.qualification ?? "UNQUALIFIED";
+                const qualificationScore = lead.qualificationScore ?? 0;
 
-                  <td className="px-4 py-3 text-mist">
-                    {lead.company || "—"}
-                  </td>
+                return (
+                  <tr
+                    key={lead.id}
+                    className="border-b border-line/30 hover:bg-ink/40"
+                  >
+                    <td className="px-4 py-3 text-foam">
+                      <Link
+                        href={`/admin/leads/${lead.id}`}
+                        className="hover:underline"
+                      >
+                        {lead.name}
+                      </Link>
+                    </td>
 
-                  <td className="px-4 py-3 text-mist text-xs">
-                    {lead.email}
-                  </td>
+                    <td className="px-4 py-3 text-xs text-mist">
+                      {lead.company || "—"}
+                    </td>
 
-                  <td className="px-4 py-3">
-                    <Badge
-                      tone={
-                        lead.status === "QUALIFIED"
-                          ? "leaf"
-                          : "mist"
-                      }
-                    >
-                      {lead.status}
-                    </Badge>
-                  </td>
+                    <td className="px-4 py-3 text-xs text-mist">
+                      {lead.email}
+                    </td>
 
-                  <td className="px-4 py-3 text-mist text-xs">
-                    {lead.createdAt.toLocaleDateString()}
-                  </td>
+                    <td className="px-4 py-3">
+                      <Badge
+                        tone={
+                          lead.status === "WON"
+                            ? "leaf"
+                            : lead.status === "LOST"
+                              ? "rose"
+                              : "mist"
+                        }
+                      >
+                        {lead.status}
+                      </Badge>
+                    </td>
 
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/admin/leads/${lead.id}`}
-                      className="text-leaf hover:text-leaf-strong text-xs font-medium"
-                    >
-                      View
-                    </Link>
-                  </td>
-                </tr>
-              ))}
+                    <td className="px-4 py-3">
+                      <Badge
+                        tone={
+                          qualification === "QUALIFIED"
+                            ? "leaf"
+                            : qualification === "DISQUALIFIED"
+                              ? "rose"
+                              : "mist"
+                        }
+                      >
+                        {qualification.charAt(0)}
+                      </Badge>
+                    </td>
+
+                    <td className="px-4 py-3 font-medium text-foam">
+                      {qualificationScore}%
+                    </td>
+
+                    <td className="px-4 py-3 text-xs text-mist">
+                      {lead.assignedToId
+                        ? assignedUserMap.get(lead.assignedToId) ||
+                          "Unknown user"
+                        : "Unassigned"}
+                    </td>
+
+                    <td className="px-4 py-3 text-xs text-mist">
+                      {lead.createdAt.toLocaleDateString()}
+                    </td>
+
+                    <td className="px-4 py-3">
+                      <Link
+                        href={`/admin/leads/${lead.id}`}
+                        className="text-xs font-medium text-leaf hover:text-leaf-strong"
+                      >
+                        View
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
