@@ -54,7 +54,7 @@ export default async function AdminLayout({
             <BrandMark compact />
             <span className="font-display text-lg tracking-[0.18em] text-foam">LEAFWEB OS</span>
           </Link>
-          <nav className="hidden flex-wrap items-center gap-3 text-sm text-mist md:flex">
+          <nav className="flex flex-wrap items-center gap-3 text-sm text-mist">
             {visibleNav.map((item) => (
               <Link key={item.href} href={item.href} className="rounded-full border border-line px-3 py-1.5 hover:border-leaf/50 hover:text-foam">
                 {item.label}
@@ -67,3 +67,4 @@ export default async function AdminLayout({
     </div>
   );
 }
+
