@@ -7,6 +7,8 @@ export type AIExecutorInput = {
   system?: string;
   prompt: string;
   temperature?: number;
+  maxTokens?: number;
+  timeoutMs?: number;
 };
 
 export type AIExecutorResult = {
@@ -19,6 +21,12 @@ export async function executeLocalAI(
   input: AIExecutorInput,
 ): Promise<AIExecutorResult> {
   const startedAt = Date.now();
+  const controller = new AbortController();
+
+  const timeout = setTimeout(
+    () => controller.abort(),
+    input.timeoutMs ?? 120000,
+  );
 
   let response: Response;
 
@@ -31,6 +39,8 @@ export async function executeLocalAI(
       body: JSON.stringify({
         model: OLLAMA_MODEL,
         stream: false,
+        think: false,
+        format: "json",
         messages: [
           ...(input.system
             ? [{ role: "system", content: input.system }]
@@ -42,14 +52,22 @@ export async function executeLocalAI(
         ],
         options: {
           temperature: input.temperature ?? 0.2,
+          num_predict: input.maxTokens ?? 128,
         },
       }),
       cache: "no-store",
+      signal: controller.signal,
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error("Local AI request timed out.");
+    }
+
     throw new Error(
       "Local AI is unavailable. Ollama must be running and reachable from the application server.",
     );
+  } finally {
+    clearTimeout(timeout);
   }
 
   if (!response.ok) {
@@ -60,7 +78,16 @@ export async function executeLocalAI(
   }
 
   const data = await response.json();
-  const text = data?.message?.content;
+
+  console.log(
+    "OLLAMA RESPONSE:",
+    JSON.stringify(data),
+  );
+
+  const text =
+    data?.message?.content ??
+    data?.response ??
+    "";
 
   if (typeof text !== "string" || !text.trim()) {
     throw new Error("Ollama returned an empty AI response.");

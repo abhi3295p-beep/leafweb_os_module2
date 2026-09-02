@@ -85,6 +85,8 @@ Return ONLY valid JSON with this structure:
 
 ${objective}`,
       temperature: 0.1,
+      maxTokens: 256,
+      timeoutMs: 180000,
     });
   } catch (error) {
     const message =
@@ -102,12 +104,54 @@ ${objective}`,
   let plan: CEOPlan;
 
   try {
-    const cleaned = result.text
-      .replace(/```json/gi, "")
-      .replace(/```/g, "")
-      .trim();
+    const raw = result.text.trim();
 
-    plan = JSON.parse(cleaned) as CEOPlan;
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+
+    if (!jsonMatch) {
+      throw new Error("No JSON object found in AI response.");
+    }
+
+    const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
+
+    const priorityValue = String(
+      parsed.priority ?? "MEDIUM",
+    ).toUpperCase();
+
+    const delegateValue = String(
+      parsed.delegateTo ?? "ceo",
+    ).toLowerCase();
+
+    const delegateTo: CEOPlan["delegateTo"] =
+      delegateValue.includes("lead")
+        ? "lead_generator"
+        : delegateValue.includes("sales")
+          ? "sales"
+          : delegateValue.includes("project")
+            ? "project_manager"
+            : "ceo";
+
+    const priority: CEOPlan["priority"] =
+      priorityValue === "CRITICAL" ||
+      priorityValue === "HIGH" ||
+      priorityValue === "MEDIUM" ||
+      priorityValue === "LOW"
+        ? priorityValue
+        : "MEDIUM";
+
+    plan = {
+      decision: String(
+        parsed.decision ?? "No decision provided.",
+      ),
+      priority,
+      delegateTo,
+      taskType: String(
+        parsed.taskType ?? "ceo_delegated_task",
+      ),
+      reasoning: String(
+        parsed.reasoning ?? "No reasoning provided.",
+      ),
+    };
   } catch {
     return {
       success: false,
@@ -115,7 +159,6 @@ ${objective}`,
       raw: result.text,
     };
   }
-
   const delegatedEmployee =
     plan.delegateTo === "ceo"
       ? ceo
@@ -187,3 +230,10 @@ ${objective}`,
     durationMs: result.durationMs,
   };
 }
+
+
+
+
+
+
+

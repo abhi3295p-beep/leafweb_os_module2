@@ -4,7 +4,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "../../db";
 import { requireAuthenticatedUser, canUserAccess } from "@/lib/auth";
 import { PERMISSIONS } from "@/lib/permissions";
-import { logAIActivity } from "./ai-tasks";
+import { executeAITask, logAIActivity } from "./ai-tasks";
 
 export interface CreateAIApprovalInput {
   taskId: string;
