@@ -13,9 +13,7 @@ type CEOPlan = {
   reasoning: string;
 };
 
-export async function runAICEO(
-  objective: string,
-) {
+export async function runAICEO(objective: string) {
   const user = await requireAuthenticatedUser();
 
   if (!user) {
@@ -27,10 +25,7 @@ export async function runAICEO(
   }
 
   const ceo = await prisma.aIEmployee.findFirst({
-    where: {
-      type: "ceo",
-      isActive: true,
-    },
+    where: { type: "ceo", isActive: true },
   });
 
   if (!ceo) {
@@ -40,9 +35,7 @@ export async function runAICEO(
   const employees = await prisma.aIEmployee.findMany({
     where: {
       isActive: true,
-      type: {
-        in: ["lead_generator", "sales", "project_manager"],
-      },
+      type: { in: ["lead_generator", "sales", "project_manager"] },
     },
     select: {
       id: true,
@@ -60,8 +53,11 @@ export async function runAICEO(
     )
     .join("\n");
 
-  const result = await executeLocalAI({
-    system: `You are LEAFWEB AI CEO.
+  let result;
+
+  try {
+    result = await executeLocalAI({
+      system: `You are LEAFWEB AI CEO.
 
 You are the top-level AI business orchestrator.
 
@@ -85,11 +81,23 @@ Return ONLY valid JSON with this structure:
   "taskType": "short_task_type",
   "reasoning": "short explanation"
 }`,
-    prompt: `Business objective:
+      prompt: `Business objective:
 
 ${objective}`,
-    temperature: 0.1,
-  });
+      temperature: 0.1,
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Local AI execution failed.";
+
+    return {
+      success: false,
+      error: "local-ai-unavailable",
+      message,
+    };
+  }
 
   let plan: CEOPlan;
 
@@ -179,4 +187,3 @@ ${objective}`,
     durationMs: result.durationMs,
   };
 }
-
