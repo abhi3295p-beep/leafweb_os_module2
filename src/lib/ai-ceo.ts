@@ -28,7 +28,6 @@ function parseCEOPlan(rawResponse: string): CEOPlan {
 
   console.log("[AI CEO] RAW RESPONSE:", raw);
 
-  // Remove markdown code fences if Gemini returns them.
   const cleaned = raw
     .replace(/^```json\s*/i, "")
     .replace(/^```\s*/i, "")
@@ -37,17 +36,26 @@ function parseCEOPlan(rawResponse: string): CEOPlan {
 
   let parsed: Record<string, unknown>;
 
-  // First attempt: parse the complete response directly.
   try {
     parsed = JSON.parse(cleaned) as Record<string, unknown>;
   } catch {
-    // Fallback: extract the first complete JSON object.
     const start = cleaned.indexOf("{");
     const end = cleaned.lastIndexOf("}");
 
-    if (start === -1 || end === -1 || end <= start) {
+    if (start === -1) {
       throw new Error(
         "No valid JSON object found in CEO response.",
+      );
+    }
+
+    if (end === -1 || end <= start) {
+      console.error(
+        "[AI CEO] Incomplete JSON response:",
+        cleaned,
+      );
+
+      throw new Error(
+        "CEO response contains incomplete JSON.",
       );
     }
 
@@ -211,7 +219,7 @@ Rules:
 
 ${objective}`,
       temperature: 0.1,
-      maxTokens: 512,
+      maxTokens: 1024,
       timeoutMs: 180000,
     });
   } catch (error) {
