@@ -42,6 +42,7 @@ export async function createAITask(input: CreateAITaskInput) {
         resourceId: input.resourceId,
         input: input.input ? (input.input as Prisma.InputJsonValue) : undefined,
         requiresApproval: input.requiresApproval || false,
+      status: input.requiresApproval ? "PENDING_APPROVAL" : "PENDING",
         scheduledFor: input.scheduledFor,
       },
     });
@@ -249,6 +250,16 @@ export async function executeAITask(taskId: string) {
 
     if (!task) {
       return { success: false, error: "not-found" };
+    }
+
+    // Approval gate: tasks requiring approval must never execute directly.
+    if (task.requiresApproval && task.status === "PENDING_APPROVAL") {
+      return {
+        success: false,
+        error: "approval-required",
+        taskId: task.id,
+        status: task.status,
+      };
     }
 
     await updateAITaskStatus(taskId, "IN_PROGRESS");

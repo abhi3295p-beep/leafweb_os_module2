@@ -40,7 +40,7 @@ export async function createAIApproval(input: CreateAIApprovalInput) {
     await logAIActivity(
       input.aiEmployeeId,
       "approval_created",
-      `Approval required for task ${input.taskId}`
+      `Approval required for task ${input.taskId}`,
     );
 
     return { success: true, data: approval };
@@ -52,13 +52,18 @@ export async function createAIApproval(input: CreateAIApprovalInput) {
 
 export async function approveAITask(
   approvalId: string,
-  notes?: string
+  notes?: string,
 ) {
   try {
     const user = await requireAuthenticatedUser();
 
     if (!user) {
       return { success: false, error: "auth-required" };
+    }
+
+    // Approval is an execution-authorizing action.
+    if (!(await canUserAccess(user, PERMISSIONS.AI_APPROVE))) {
+      return { success: false, error: "Permission denied" };
     }
 
     const approval = await prisma.aIApproval.findUnique({
@@ -70,7 +75,23 @@ export async function approveAITask(
       return { success: false, error: "approval-not-found" };
     }
 
-    // Update approval
+    if (approval.status !== "PENDING") {
+      return {
+        success: false,
+        error: "approval-not-pending",
+        status: approval.status,
+      };
+    }
+
+    if (approval.task.status !== "PENDING_APPROVAL") {
+      return {
+        success: false,
+        error: "task-not-awaiting-approval",
+        status: approval.task.status,
+      };
+    }
+
+    // Mark approval as approved first.
     const updated = await prisma.aIApproval.update({
       where: { id: approvalId },
       data: {
@@ -80,24 +101,36 @@ export async function approveAITask(
       },
     });
 
-    // Update task to completed
-    await prisma.aITask.update({
-      where: { id: approval.taskId },
-      data: {
-        status: "COMPLETED",
-        result: "success",
-        completedAt: new Date(),
-      },
-    });
-
     await logAIActivity(
       approval.aiEmployeeId,
       "approval_approved",
       `Approval ${approvalId} approved by ${user.name}`,
-      { approverName: user.name, notes }
+      { approverName: user.name, notes },
     );
 
-    return { success: true, data: updated };
+    // Release approved task for execution.
+    await prisma.aITask.update({
+      where: { id: approval.taskId },
+      data: { status: "PENDING" },
+    });
+
+    // Route execution through the real execution function.
+    const execution = await executeAITask(approval.taskId);
+
+    if (!execution.success) {
+      return {
+        success: false,
+        error: execution.error || "execution-failed-after-approval",
+        approval: updated,
+        execution,
+      };
+    }
+
+    return {
+      success: true,
+      data: updated,
+      execution,
+    };
   } catch (error) {
     console.error("Approve AI task error:", error);
     return { success: false, error: "server-error" };
@@ -106,13 +139,17 @@ export async function approveAITask(
 
 export async function rejectAITask(
   approvalId: string,
-  rejectionReason: string
+  rejectionReason: string,
 ) {
   try {
     const user = await requireAuthenticatedUser();
 
     if (!user) {
       return { success: false, error: "auth-required" };
+    }
+
+    if (!(await canUserAccess(user, PERMISSIONS.AI_EXECUTE))) {
+      return { success: false, error: "Permission denied" };
     }
 
     const approval = await prisma.aIApproval.findUnique({
@@ -150,7 +187,7 @@ export async function rejectAITask(
       approval.aiEmployeeId,
       "approval_rejected",
       `Approval ${approvalId} rejected by ${user.name}`,
-      { rejectionReason }
+      { rejectionReason },
     );
 
     return { success: true, data: updated };
@@ -162,6 +199,16 @@ export async function rejectAITask(
 
 export async function getAIApproval(approvalId: string) {
   try {
+    const user = await requireAuthenticatedUser();
+
+    if (!user) {
+      return { success: false, error: "auth-required" };
+    }
+
+    if (!(await canUserAccess(user, PERMISSIONS.AI_READ))) {
+      return { success: false, error: "Permission denied" };
+    }
+
     const approval = await prisma.aIApproval.findUnique({
       where: { id: approvalId },
       include: {
@@ -170,34 +217,14 @@ export async function getAIApproval(approvalId: string) {
       },
     });
 
-    return approval;
-  } catch (error) {
-    console.error("Get AI approval error:", error);
-    return null;
-  }
-}
-
-export async function listPendingApprovals(employeeId?: string, take: number = 50) {
-  try {
-    const where: any = { status: "PENDING" };
-    if (employeeId) {
-      where.aiEmployeeId = employeeId;
+    if (!approval) {
+      return { success: false, error: "approval-not-found" };
     }
 
-    const approvals = await prisma.aIApproval.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      take,
-      include: {
-        task: true,
-        aiEmployee: true,
-      },
-    });
-
-    return approvals;
+    return { success: true, data: approval };
   } catch (error) {
-    console.error("List pending approvals error:", error);
-    return [];
+    console.error("Get AI approval error:", error);
+    return { success: false, error: "server-error" };
   }
 }
 
