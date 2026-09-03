@@ -123,15 +123,125 @@ export default async function AIEmployeePage({ params }: Props) {
           </div>
         ) : (
           <div className="mt-4 space-y-4">
-            {employee.tasks.map((task) => (
-              <Card key={task.id}>
-                <CardTitle>{task.result || "AI Task"}</CardTitle>
-                <CardDescription>
-                  <span className="block">{task.status}</span>
-                  <span className="mt-1 block text-xs">{task.error || "No task details available."}</span>
-                </CardDescription>
-              </Card>
-            ))}
+            {employee.tasks.map((task) => {
+              const input =
+                task.input &&
+                typeof task.input === "object" &&
+                !Array.isArray(task.input)
+                  ? (task.input as Record<string, unknown>)
+                  : null;
+
+              const output =
+                task.output &&
+                typeof task.output === "object" &&
+                !Array.isArray(task.output)
+                  ? (task.output as Record<string, unknown>)
+                  : null;
+
+              const objective =
+                typeof input?.objective === "string"
+                  ? input.objective
+                  : null;
+
+              const decision =
+                typeof input?.ceoDecision === "string"
+                  ? input.ceoDecision
+                  : null;
+
+              const reasoning =
+                typeof input?.reasoning === "string"
+                  ? input.reasoning
+                  : null;
+
+              const outputText =
+                typeof output?.text === "string"
+                  ? output.text
+                  : null;
+
+              const result =
+                typeof task.result === "string" &&
+                task.result.trim()
+                  ? task.result
+                  : null;
+
+              return (
+                <Card key={task.id}>
+                  <CardTitle>
+                    {result ||
+                      task.taskType
+                        .replace(/[_-]+/g, " ")
+                        .replace(/\b\w/g, (char: string) =>
+                          char.toUpperCase(),
+                        ) ||
+                      "AI Task"}
+                  </CardTitle>
+
+                  <CardDescription>
+                    <span className="block font-medium">
+                      {task.status}
+                    </span>
+
+                    <div className="mt-3 space-y-2 text-sm">
+                      {objective && (
+                        <p>
+                          <span className="font-medium text-foam">
+                            Objective:
+                          </span>{" "}
+                          {objective}
+                        </p>
+                      )}
+
+                      {decision && (
+                        <p>
+                          <span className="font-medium text-foam">
+                            Decision:
+                          </span>{" "}
+                          {decision}
+                        </p>
+                      )}
+
+                      {reasoning && (
+                        <p>
+                          <span className="font-medium text-foam">
+                            Reasoning:
+                          </span>{" "}
+                          {reasoning}
+                        </p>
+                      )}
+
+                      {outputText && (
+                        <div>
+                          <p className="font-medium text-foam">
+                            AI Output:
+                          </p>
+                          <p className="mt-1 whitespace-pre-wrap break-words">
+                            {outputText}
+                          </p>
+                        </div>
+                      )}
+
+                      {task.error && (
+                        <p className="text-rose-200">
+                          <span className="font-medium">
+                            Error:
+                          </span>{" "}
+                          {task.error}
+                        </p>
+                      )}
+
+                      {!objective &&
+                        !decision &&
+                        !reasoning &&
+                        !outputText &&
+                        !result &&
+                        !task.error && (
+                          <p>No task details available.</p>
+                        )}
+                    </div>
+                  </CardDescription>
+                </Card>
+              );
+            })}
           </div>
         )}
       </section>
