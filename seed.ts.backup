@@ -1,4 +1,4 @@
-﻿import bcrypt from "bcryptjs";
+import bcrypt from "bcryptjs";
 import { PrismaClient, Prisma } from "@prisma/client";
 import { DEFAULT_ROLE_PERMISSIONS, PERMISSIONS, ROLE_SLUGS } from "./src/lib/permissions.ts";
 
@@ -47,21 +47,22 @@ const permissionNames: Record<(typeof PERMISSIONS)[keyof typeof PERMISSIONS], { 
   [PERMISSIONS.FILE_READ_OWN]: { name: "Read own files", description: "Read files owned by the authenticated client." },
   [PERMISSIONS.FILE_UPLOAD]: { name: "Upload files", description: "Upload private files to approved storage." },
   [PERMISSIONS.FILE_DOWNLOAD]: { name: "Download files", description: "Download authorized private files." },
+  [PERMISSIONS.AI_READ]: { name: "Read AI employees", description: "View AI employee status and tasks." },
+  [PERMISSIONS.AI_WRITE]: { name: "Manage AI employees", description: "Create and configure AI employees." },
+  [PERMISSIONS.AI_EXECUTE]: { name: "Execute AI tasks", description: "Trigger and execute AI tasks." },
+  [PERMISSIONS.AI_APPROVE]: { name: "Approve AI actions", description: "Approve AI task results before implementation." },
+  [PERMISSIONS.AI_MANAGE]: { name: "Manage AI system", description: "Full AI system management and configuration." },
+  [PERMISSIONS.AUTOMATION_READ]: { name: "Read automations", description: "View automation workflows." },
+  [PERMISSIONS.AUTOMATION_WRITE]: { name: "Write automations", description: "Create and update automation workflows." },
+  [PERMISSIONS.AUTOMATION_EXECUTE]: { name: "Execute automations", description: "Trigger automation workflows." },
+  [PERMISSIONS.WEBHOOK_READ]: { name: "Read webhooks", description: "View webhook subscriptions." },
+  [PERMISSIONS.WEBHOOK_WRITE]: { name: "Write webhooks", description: "Create and update webhook subscriptions." },
   [PERMISSIONS.NOTIFICATION_READ]: { name: "Read notifications", description: "Read in-app notifications." },
   [PERMISSIONS.ANALYTICS_READ]: { name: "Read analytics", description: "Read operational analytics." },
+  [PERMISSIONS.AUDIT_READ]: { name: "Read audit logs", description: "View audit and activity logs." },
   [PERMISSIONS.SETTINGS_WRITE]: { name: "Write settings", description: "Update agency settings." },
   [PERMISSIONS.PERMISSION_WRITE]: { name: "Write permissions", description: "Change role permission assignments." },
-  [PERMISSIONS.AI_READ]: { name: "Read AI", description: "View AI employees, tasks, and activity." },
-  [PERMISSIONS.AI_WRITE]: { name: "Write AI", description: "Create and modify AI employees and tasks." },
-  [PERMISSIONS.AI_EXECUTE]: { name: "Execute AI", description: "Execute AI employee tasks and actions." },
-  [PERMISSIONS.AI_APPROVE]: { name: "Approve AI", description: "Approve AI employee actions and tasks." },
-  [PERMISSIONS.AI_MANAGE]: { name: "Manage AI", description: "Manage AI employees and AI configuration." },
-  [PERMISSIONS.AUTOMATION_READ]: { name: "Read automations", description: "View automation workflows and executions." },
-  [PERMISSIONS.AUTOMATION_WRITE]: { name: "Write automations", description: "Create and modify automation workflows." },
-  [PERMISSIONS.AUTOMATION_EXECUTE]: { name: "Execute automations", description: "Execute automation workflows." },
-  [PERMISSIONS.WEBHOOK_READ]: { name: "Read webhooks", description: "View webhook configurations and events." },
-  [PERMISSIONS.WEBHOOK_WRITE]: { name: "Write webhooks", description: "Create and modify webhook configurations." },
-  [PERMISSIONS.AUDIT_READ]: { name: "Read audit logs", description: "View audit logs and security activity." },};
+};
 
 const roleMetadata: Record<(typeof ROLE_SLUGS)[keyof typeof ROLE_SLUGS], { name: string; description: string }> = {
   [ROLE_SLUGS.SUPER_ADMIN]: { name: "Super Admin", description: "Unrestricted administrative role." },
@@ -76,70 +77,149 @@ const roleMetadata: Record<(typeof ROLE_SLUGS)[keyof typeof ROLE_SLUGS], { name:
   [ROLE_SLUGS.CLIENT]: { name: "Client", description: "Portal role restricted to the authenticated client's own data." },
 };
 
-const services = [
+const aiEmployees = [
   {
-    slug: "web-development",
-    name: "Web Development",
-    summary: "Modern, responsive websites and web applications.",
-    description: "Strategy, UX-friendly interfaces, frontend development, backend integration, testing, and deployment.",
-    features: ["Responsive UI", "CMS or custom stack", "SEO-ready foundations", "Deployment support"],
-    technologies: ["Next.js", "React", "TypeScript", "PostgreSQL"],
-    timeline: "3â€“8 weeks",
-    startingPrice: "45000.00",
-    sortOrder: 10,
-    packages: [
-      { name: "Starter", description: "A focused marketing website for a small business.", price: "45000.00", features: ["Up to 5 pages", "Responsive design", "Basic SEO"] , sortOrder: 10 },
-      { name: "Business", description: "A scalable business website with richer content needs.", price: "85000.00", features: ["Up to 12 pages", "CMS integration", "Advanced SEO", "Analytics setup"], sortOrder: 20 },
-      { name: "Custom", description: "A tailored web application or complex website build.", price: "150000.00", features: ["Custom functionality", "Third-party integrations", "Priority delivery"], sortOrder: 30 },
+    type: "ceo-ai",
+    name: "CEO AI",
+    displayName: "CEO AI",
+    description:
+      "Executive intelligence for agency overview, revenue, pipeline, projects, AI workforce performance, summaries, and strategic recommendations.",
+    capabilities: [
+      "executive_intelligence",
+      "agency_overview",
+      "revenue_analysis",
+      "pipeline_analysis",
+      "project_overview",
+      "ai_workforce_monitoring",
+      "executive_summaries",
+      "strategic_recommendations",
     ],
+    configuration: {
+      approvalRequiredFor: [
+        "financial_actions",
+        "external_communications",
+        "permission_changes",
+        "destructive_actions",
+        "deployment_actions",
+      ],
+    },
   },
   {
-    slug: "ecommerce",
-    name: "E-commerce",
-    summary: "Conversion-focused stores with secure catalog and checkout flows.",
-    description: "Storefront design, product catalog, order flows, payment integration boundaries, and operational setup.",
-    features: ["Product catalog", "Cart and checkout", "Order workflows", "Analytics-ready tracking"],
-    technologies: ["Next.js", "React", "TypeScript", "PostgreSQL"],
-    timeline: "5â€“10 weeks",
-    startingPrice: "95000.00",
-    sortOrder: 20,
-    packages: [
-      { name: "Launch", description: "A small catalog store with essential commerce workflows.", price: "95000.00", features: ["Up to 50 products", "Responsive store", "Order workflow"], sortOrder: 10 },
-      { name: "Growth", description: "A richer store for growing product catalogs and campaigns.", price: "160000.00", features: ["Up to 250 products", "Advanced catalog", "Promotional tooling"], sortOrder: 20 },
-      { name: "Scale", description: "A tailored commerce platform for complex business requirements.", price: "250000.00", features: ["Custom integrations", "Advanced operations", "Performance optimization"], sortOrder: 30 },
+    type: "lead-generator-ai",
+    name: "Lead Generator AI",
+    displayName: "Lead Generator AI",
+    description:
+      "Finds, enriches, scores, qualifies, assigns, and follows up on sales leads.",
+    capabilities: [
+      "lead_discovery",
+      "lead_enrichment",
+      "lead_scoring",
+      "lead_qualification",
+      "lead_assignment",
+      "opportunity_tracking",
     ],
+    configuration: {},
   },
   {
-    slug: "seo",
-    name: "SEO & Growth",
-    summary: "Technical and content-focused search growth foundations.",
-    description: "Technical audits, on-page optimization, content planning, structured data, and measurement setup.",
-    features: ["Technical SEO", "On-page optimization", "Content roadmap", "Search reporting"],
-    technologies: ["Search Console", "Analytics", "Schema.org"],
-    timeline: "4â€“12 weeks",
-    startingPrice: "25000.00",
-    sortOrder: 30,
-    packages: [
-      { name: "Foundation", description: "Technical audit and priority fixes.", price: "25000.00", features: ["Technical audit", "Keyword baseline", "Priority recommendations"], sortOrder: 10 },
-      { name: "Growth", description: "Ongoing optimization and content planning.", price: "45000.00", features: ["Monthly optimization", "Content roadmap", "Reporting"], sortOrder: 20 },
-      { name: "Authority", description: "A broader search growth program.", price: "75000.00", features: ["Technical SEO", "Content strategy", "Ongoing measurement"], sortOrder: 30 },
+    type: "sales-ai",
+    name: "Sales AI",
+    displayName: "Sales AI",
+    description:
+      "Supports sales pipeline management, opportunity analysis, proposals, and conversion workflows.",
+    capabilities: [
+      "opportunity_tracking",
+      "sales_analysis",
+      "proposal_assistance",
+      "conversion_tracking",
+      "sales_forecasting",
     ],
+    configuration: {},
   },
   {
-    slug: "ai-automation",
-    name: "AI & Automation",
-    summary: "Practical AI-enabled workflows that reduce repetitive operations.",
-    description: "Workflow discovery, automation design, integration work, and safe AI-assisted operational tooling.",
-    features: ["Workflow mapping", "Automation design", "API integrations", "Operational safeguards"],
-    technologies: ["TypeScript", "REST APIs", "Webhooks", "AI APIs"],
-    timeline: "3â€“8 weeks",
-    startingPrice: "65000.00",
-    sortOrder: 40,
-    packages: [
-      { name: "Pilot", description: "One focused automation workflow.", price: "65000.00", features: ["One workflow", "Integration setup", "Basic monitoring"], sortOrder: 10 },
-      { name: "Operations", description: "Multiple connected workflows for a business process.", price: "120000.00", features: ["Up to 3 workflows", "Multiple integrations", "Operational reporting"], sortOrder: 20 },
-      { name: "Custom", description: "A larger automation system designed around specific operations.", price: "200000.00", features: ["Custom workflow architecture", "Multiple integrations", "Handover documentation"], sortOrder: 30 },
+    type: "followup-ai",
+    name: "Follow-Up AI",
+    displayName: "Follow-Up AI",
+    description:
+      "Manages lead and client follow-ups, reminders, contact timing, and follow-up recommendations.",
+    capabilities: [
+      "followup_management",
+      "reminder_generation",
+      "contact_timing",
+      "lead_reengagement",
+      "client_followup",
     ],
+    configuration: {},
+  },
+  {
+    type: "project-manager-ai",
+    name: "Project Manager AI",
+    displayName: "Project Manager AI",
+    description:
+      "Monitors projects, milestones, tasks, deadlines, risks, and delivery progress.",
+    capabilities: [
+      "project_monitoring",
+      "task_monitoring",
+      "milestone_tracking",
+      "deadline_monitoring",
+      "risk_detection",
+      "delivery_tracking",
+    ],
+    configuration: {},
+  },
+  {
+    type: "marketing-ai",
+    name: "SEO & Growth AI",
+    displayName: "SEO & Growth AI",
+    description:
+      "Handles SEO, growth analysis, content opportunities, website performance, and marketing intelligence.",
+    capabilities: [
+      "seo_analysis",
+      "keyword_analysis",
+      "content_opportunities",
+      "growth_analysis",
+      "website_performance",
+      "marketing_reporting",
+    ],
+    configuration: {},
+  },
+  {
+    type: "support-ai",
+    name: "Client Support AI",
+    displayName: "Client Support AI",
+    description:
+      "Provides authenticated client support using only data the client is authorized to access.",
+    capabilities: [
+      "client_support",
+      "message_assistance",
+      "client_status",
+      "project_updates",
+      "faq_assistance",
+    ],
+    configuration: {
+      clientDataScope: "authenticated_client_only",
+    },
+  },
+  {
+    type: "finance-ai",
+    name: "Finance & Operations AI",
+    displayName: "Finance & Operations AI",
+    description:
+      "Monitors invoices, payments, revenue, operational metrics, and financial risks.",
+    capabilities: [
+      "invoice_monitoring",
+      "payment_monitoring",
+      "revenue_analysis",
+      "cashflow_monitoring",
+      "operations_analysis",
+      "financial_risk_detection",
+    ],
+    configuration: {
+      approvalRequiredFor: [
+        "financial_actions",
+        "payment_actions",
+        "invoice_actions",
+      ],
+    },
   },
 ] as const;
 
@@ -266,141 +346,82 @@ async function main(): Promise<void> {
         }
       }
 
-      const aiEmployees = [
-  {
-    name: "LEAFWEB Lead Generator AI",
-    type: "lead_generator",
-    displayName: "Lead Generator AI",
-    description: "Local AI employee responsible for lead qualification, scoring, enrichment, follow-ups, and sales pipeline assistance.",
-    capabilities: [
-      "lead_qualification",
-      "lead_scoring",
-      "lead_enrichment",
-      "opportunity_tracking",
-      "proposal_assistance",
-    ],
-    configuration: {
-      provider: "ollama",
-      model: "qwen3:8b",
-      endpoint: "http://localhost:11434",
-      temperature: 0.2,
-      autonomous: false,
-      requiresApproval: true,
-    },
-    status: "IDLE",
-    isActive: true,
-  },
-  {
-    name: "LEAFWEB Sales AI",
-    type: "sales",
-    displayName: "Sales AI",
-    description: "Local AI employee responsible for sales assistance, opportunity tracking, proposal support, and customer communication drafts.",
-    capabilities: [
-      "opportunity_tracking",
-      "proposal_assistance",
-    ],
-    configuration: {
-      provider: "ollama",
-      model: "qwen3:8b",
-      endpoint: "http://localhost:11434",
-      temperature: 0.2,
-      autonomous: false,
-      requiresApproval: true,
-    },
-    status: "IDLE",
-    isActive: true,
-  },
-  {
-    name: "LEAFWEB Project Manager AI",
-    type: "project_manager",
-    displayName: "Project Manager AI",
-    description: "Local AI employee responsible for project monitoring, task monitoring, milestone tracking, and risk detection.",
-    capabilities: [
-      "project_monitoring",
-      "task_monitoring",
-      "milestone_tracking",
-      "risk_detection",
-    ],
-    configuration: {
-      provider: "ollama",
-      model: "qwen3:8b",
-      endpoint: "http://localhost:11434",
-      temperature: 0.2,
-      autonomous: false,
-      requiresApproval: true,
-    },
-    status: "IDLE",
-    isActive: true,
-  },
-  {
-    name: "LEAFWEB AI CEO",
-    type: "ceo",
-    displayName: "AI CEO",
-    description: "Top-level local AI executive responsible for business strategy, KPI analysis, AI employee orchestration, delegation, prioritization, decision support, and approval-controlled execution.",
-    capabilities: [
-      "business_strategy",
-      "kpi_analysis",
-      "ai_orchestration",
-      "employee_delegation",
-      "task_prioritization",
-      "pipeline_oversight",
-      "project_oversight",
-      "risk_detection",
-      "decision_support",
-    ],
-    configuration: {
-      provider: "ollama",
-      model: "qwen3:8b",
-      endpoint: "http://localhost:11434",
-      temperature: 0.2,
-      autonomous: false,
-      requiresApproval: true,
-    },
-    status: "IDLE",
-    isActive: true,
-  },
-];
+                 for (const employeeData of aiEmployees) {
+        const existing = await tx.aIEmployee.findFirst({
+          where: { type: employeeData.type },
+          select: { id: true },
+        });
 
-for (const employeeData of aiEmployees) {
-  const existing = await tx.aIEmployee.findFirst({
-    where: { name: employeeData.name },
-    select: { id: true },
-  });
+        if (existing) {
+          await tx.aIEmployee.update({
+            where: { id: existing.id },
+            data: {
+              name: employeeData.name,
+              displayName: employeeData.displayName,
+              description: employeeData.description,
+              capabilities: [...employeeData.capabilities],
+              configuration: employeeData.configuration,
+              isActive: true,
+            },
+          });
+        } else {
+          await tx.aIEmployee.create({
+            data: {
+              name: employeeData.name,
+              type: employeeData.type,
+              displayName: employeeData.displayName,
+              description: employeeData.description,
+              capabilities: [...employeeData.capabilities],
+              configuration: employeeData.configuration,
+              status: "IDLE",
+              isActive: true,
+            },
+          });
+        }
+      }
 
-  if (existing) {
-    await tx.aIEmployee.update({
-      where: { id: existing.id },
-      data: employeeData,
-    });
-  } else {
-    await tx.aIEmployee.create({
-      data: employeeData,
-    });
-  }
-}
-const superAdminRoleId = rolesBySlug.get(ROLE_SLUGS.SUPER_ADMIN)!.id;
+      const superAdminRoleId = rolesBySlug.get(ROLE_SLUGS.SUPER_ADMIN)!.id;
       const passwordHash = hashPassword(superAdminPassword);
-      const existingUser = await tx.user.findUnique({ where: { email: superAdminEmail }, select: { id: true } });
+
+      const existingUser = await tx.user.findUnique({
+        where: { email: superAdminEmail },
+        select: { id: true },
+      });
+
       if (existingUser) {
-        await tx.user.update({ where: { id: existingUser.id }, data: { name: superAdminName, roleId: superAdminRoleId, passwordHash, deletedAt: null } });
+        await tx.user.update({
+          where: { id: existingUser.id },
+          data: {
+            name: superAdminName,
+            roleId: superAdminRoleId,
+            passwordHash,
+            deletedAt: null,
+          },
+        });
       } else {
-        await tx.user.create({ data: { email: superAdminEmail, passwordHash, name: superAdminName, roleId: superAdminRoleId } });
+        await tx.user.create({
+          data: {
+            email: superAdminEmail,
+            passwordHash,
+            name: superAdminName,
+            roleId: superAdminRoleId,
+          },
+        });
       }
     },
     { timeout: 120000, maxWait: 120000 },
   );
 
-  console.log("Seed complete: roles, permissions, role permissions, services, packages, and Super Admin are ready.");
+  console.log(
+    "Seed complete: roles, permissions, role permissions, services, packages, AI employees, and Super Admin are ready.",
+  );
 }
 
-main().catch(async (error) => {
-  console.error(error);
-  process.exitCode = 1;
-}).finally(async () => prisma.$disconnect());
-
-
-
-
-
-
-
+main()
+  .catch(async (error) => {
+    console.error(error);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

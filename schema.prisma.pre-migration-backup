@@ -170,32 +170,33 @@ model Package {
 }
 
 model Lead {
-  id                 String         @id @default(uuid())
+  id                 String     @id @default(uuid())
   name               String
   email              String
   phone              String?
   company            String?
-  message            String
-  status             LeadStatus     @default(NEW)
-  serviceId          String?
-  clientId           String?
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
-  deletedAt          DateTime?
-  assignedToId       String?
-  contactAttempts    Int            @default(0)
+  website            String?
   industry           String?
-  lastContactedAt    DateTime?
   location           String?
-  nextFollowUpAt     DateTime?
-  notes              String?
+  message            String
+  source             String?
+  status             LeadStatus @default(NEW)
   qualification      String?
   qualificationScore Int?
-  source             String?
-  website            String?
-  client             Client?        @relation(fields: [clientId], references: [id])
-  service            Service?       @relation(fields: [serviceId], references: [id])
-  activities         LeadActivity[]
+  assignedToId       String?
+  notes              String?
+  nextFollowUpAt     DateTime?
+  lastContactedAt    DateTime?
+  contactAttempts    Int        @default(0)
+  serviceId          String?
+  clientId           String?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  deletedAt          DateTime?
+
+  client     Client?        @relation(fields: [clientId], references: [id])
+  service    Service?       @relation(fields: [serviceId], references: [id])
+  activities LeadActivity[]
 
   @@index([status])
   @@index([email])
@@ -480,102 +481,6 @@ model AgencySetting {
   updatedAt DateTime @updatedAt
 }
 
-model LeadActivity {
-  id        String   @id @default(uuid())
-  leadId    String
-  type      String
-  summary   String
-  details   String?
-  actorId   String?
-  metadata  Json?
-  createdAt DateTime @default(now())
-  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
-
-  @@index([leadId])
-  @@index([createdAt])
-}
-
-model AIEmployee {
-  id            String          @id @default(uuid())
-  name          String
-  type          String
-  displayName   String
-  description   String?
-  capabilities  Json
-  configuration Json
-  status        String          @default("IDLE")
-  isActive      Boolean         @default(true)
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-  activityLogs  AIActivityLog[]
-  approvals     AIApproval[]
-  tasks         AITask[]
-
-  @@index([type])
-  @@index([isActive])
-  @@index([status])
-}
-
-model AITask {
-  id               String      @id @default(uuid())
-  aiEmployeeId     String
-  taskType         String
-  priority         Int         @default(0)
-  resourceType     String?
-  resourceId       String?
-  input            Json?
-  requiresApproval Boolean     @default(false)
-  scheduledFor     DateTime?
-  status           String      @default("PENDING")
-  startedAt        DateTime?
-  completedAt      DateTime?
-  output           Json?
-  result           String?
-  error            String?
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
-  approval         AIApproval?
-  aiEmployee       AIEmployee  @relation(fields: [aiEmployeeId], references: [id], onDelete: Cascade)
-
-  @@index([aiEmployeeId])
-  @@index([status])
-  @@index([scheduledFor])
-  @@index([resourceType, resourceId])
-}
-
-model AIActivityLog {
-  id           String     @id @default(uuid())
-  aiEmployeeId String
-  action       String
-  summary      String
-  metadata     Json?
-  createdAt    DateTime   @default(now())
-  aiEmployee   AIEmployee @relation(fields: [aiEmployeeId], references: [id], onDelete: Cascade)
-
-  @@index([aiEmployeeId])
-  @@index([createdAt])
-}
-
-model AIApproval {
-  id                String     @id @default(uuid())
-  taskId            String     @unique
-  aiEmployeeId      String
-  requiredApprovers String[]
-  status            String     @default("PENDING")
-  approvedBy        String?
-  approvedAt        DateTime?
-  rejectedBy        String?
-  rejectedAt        DateTime?
-  rejectionReason   String?
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
-  aiEmployee        AIEmployee @relation(fields: [aiEmployeeId], references: [id], onDelete: Cascade)
-  task              AITask     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-
-  @@index([aiEmployeeId])
-  @@index([status])
-}
-
 enum ProjectStatus {
   NEW
   REQUIREMENTS
@@ -641,11 +546,11 @@ enum LeadStatus {
   NEW
   CONTACTED
   QUALIFIED
+  MEETING_BOOKED
   PROPOSAL
+  PROPOSAL_SENT
   WON
   LOST
-  MEETING_BOOKED
-  PROPOSAL_SENT
 }
 
 enum FileVisibility {
@@ -658,4 +563,105 @@ enum FileDriver {
   LOCAL
   S3
   R2
+}
+
+model LeadActivity {
+  id        String   @id @default(uuid())
+  leadId    String
+  type      String
+  summary   String
+  details   String?
+  actorId   String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@index([createdAt])
+}
+
+model AIEmployee {
+  id            String   @id @default(uuid())
+  name          String
+  type          String
+  displayName   String
+  description   String?
+  capabilities  Json
+  configuration Json
+  status        String   @default("IDLE")
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tasks        AITask[]
+  activityLogs AIActivityLog[]
+  approvals    AIApproval[]
+
+  @@index([type])
+  @@index([isActive])
+  @@index([status])
+}
+
+model AITask {
+  id               String    @id @default(uuid())
+  aiEmployeeId     String
+  taskType         String
+  priority         Int       @default(0)
+  resourceType     String?
+  resourceId       String?
+  input            Json?
+  requiresApproval Boolean   @default(false)
+  scheduledFor     DateTime?
+  status           String    @default("PENDING")
+  startedAt        DateTime?
+  completedAt      DateTime?
+  output           Json?
+  result           String?
+  error            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  aiEmployee AIEmployee  @relation(fields: [aiEmployeeId], references: [id], onDelete: Cascade)
+  approval   AIApproval?
+
+  @@index([aiEmployeeId])
+  @@index([status])
+  @@index([scheduledFor])
+  @@index([resourceType, resourceId])
+}
+
+model AIActivityLog {
+  id           String   @id @default(uuid())
+  aiEmployeeId String
+  action       String
+  summary      String
+  metadata     Json?
+  createdAt    DateTime @default(now())
+
+  aiEmployee AIEmployee @relation(fields: [aiEmployeeId], references: [id], onDelete: Cascade)
+
+  @@index([aiEmployeeId])
+  @@index([createdAt])
+}
+
+model AIApproval {
+  id                String    @id @default(uuid())
+  taskId            String    @unique
+  aiEmployeeId      String
+  requiredApprovers String[]
+  status            String    @default("PENDING")
+  approvedBy        String?
+  approvedAt        DateTime?
+  rejectedBy        String?
+  rejectedAt        DateTime?
+  rejectionReason   String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  task       AITask     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  aiEmployee AIEmployee @relation(fields: [aiEmployeeId], references: [id], onDelete: Cascade)
+
+  @@index([aiEmployeeId])
+  @@index([status])
 }

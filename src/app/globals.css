@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #07090a;
+  --panel: #101417;
+  --foam: #eef4f0;
+  --mist: #9aa8a1;
+  --leaf: #6ee7b7;
+  --leaf-strong: #34d399;
+  --gold: #c4a574;
+  --line: rgba(238, 244, 240, 0.1);
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-panel: var(--panel);
+  --color-foam: var(--foam);
+  --color-mist: var(--mist);
+  --color-leaf: var(--leaf);
+  --color-leaf-strong: var(--leaf-strong);
+  --color-gold: var(--gold);
+  --color-line: var(--line);
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
+}
+
+html,
+body {
+  background: var(--ink);
+  color: var(--foam);
+}
+
+body {
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+.font-display {
+  font-family: var(--font-display), Georgia, serif;
+}

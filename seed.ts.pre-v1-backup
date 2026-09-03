@@ -1,4 +1,4 @@
-﻿import bcrypt from "bcryptjs";
+import bcrypt from "bcryptjs";
 import { PrismaClient, Prisma } from "@prisma/client";
 import { DEFAULT_ROLE_PERMISSIONS, PERMISSIONS, ROLE_SLUGS } from "./src/lib/permissions.ts";
 
@@ -47,21 +47,22 @@ const permissionNames: Record<(typeof PERMISSIONS)[keyof typeof PERMISSIONS], { 
   [PERMISSIONS.FILE_READ_OWN]: { name: "Read own files", description: "Read files owned by the authenticated client." },
   [PERMISSIONS.FILE_UPLOAD]: { name: "Upload files", description: "Upload private files to approved storage." },
   [PERMISSIONS.FILE_DOWNLOAD]: { name: "Download files", description: "Download authorized private files." },
+  [PERMISSIONS.AI_READ]: { name: "Read AI employees", description: "View AI employee status and tasks." },
+  [PERMISSIONS.AI_WRITE]: { name: "Manage AI employees", description: "Create and configure AI employees." },
+  [PERMISSIONS.AI_EXECUTE]: { name: "Execute AI tasks", description: "Trigger and execute AI tasks." },
+  [PERMISSIONS.AI_APPROVE]: { name: "Approve AI actions", description: "Approve AI task results before implementation." },
+  [PERMISSIONS.AI_MANAGE]: { name: "Manage AI system", description: "Full AI system management and configuration." },
+  [PERMISSIONS.AUTOMATION_READ]: { name: "Read automations", description: "View automation workflows." },
+  [PERMISSIONS.AUTOMATION_WRITE]: { name: "Write automations", description: "Create and update automation workflows." },
+  [PERMISSIONS.AUTOMATION_EXECUTE]: { name: "Execute automations", description: "Trigger automation workflows." },
+  [PERMISSIONS.WEBHOOK_READ]: { name: "Read webhooks", description: "View webhook subscriptions." },
+  [PERMISSIONS.WEBHOOK_WRITE]: { name: "Write webhooks", description: "Create and update webhook subscriptions." },
   [PERMISSIONS.NOTIFICATION_READ]: { name: "Read notifications", description: "Read in-app notifications." },
   [PERMISSIONS.ANALYTICS_READ]: { name: "Read analytics", description: "Read operational analytics." },
+  [PERMISSIONS.AUDIT_READ]: { name: "Read audit logs", description: "View audit and activity logs." },
   [PERMISSIONS.SETTINGS_WRITE]: { name: "Write settings", description: "Update agency settings." },
   [PERMISSIONS.PERMISSION_WRITE]: { name: "Write permissions", description: "Change role permission assignments." },
-  [PERMISSIONS.AI_READ]: { name: "Read AI", description: "View AI employees, tasks, and activity." },
-  [PERMISSIONS.AI_WRITE]: { name: "Write AI", description: "Create and modify AI employees and tasks." },
-  [PERMISSIONS.AI_EXECUTE]: { name: "Execute AI", description: "Execute AI employee tasks and actions." },
-  [PERMISSIONS.AI_APPROVE]: { name: "Approve AI", description: "Approve AI employee actions and tasks." },
-  [PERMISSIONS.AI_MANAGE]: { name: "Manage AI", description: "Manage AI employees and AI configuration." },
-  [PERMISSIONS.AUTOMATION_READ]: { name: "Read automations", description: "View automation workflows and executions." },
-  [PERMISSIONS.AUTOMATION_WRITE]: { name: "Write automations", description: "Create and modify automation workflows." },
-  [PERMISSIONS.AUTOMATION_EXECUTE]: { name: "Execute automations", description: "Execute automation workflows." },
-  [PERMISSIONS.WEBHOOK_READ]: { name: "Read webhooks", description: "View webhook configurations and events." },
-  [PERMISSIONS.WEBHOOK_WRITE]: { name: "Write webhooks", description: "Create and modify webhook configurations." },
-  [PERMISSIONS.AUDIT_READ]: { name: "Read audit logs", description: "View audit logs and security activity." },};
+};
 
 const roleMetadata: Record<(typeof ROLE_SLUGS)[keyof typeof ROLE_SLUGS], { name: string; description: string }> = {
   [ROLE_SLUGS.SUPER_ADMIN]: { name: "Super Admin", description: "Unrestricted administrative role." },
@@ -84,7 +85,7 @@ const services = [
     description: "Strategy, UX-friendly interfaces, frontend development, backend integration, testing, and deployment.",
     features: ["Responsive UI", "CMS or custom stack", "SEO-ready foundations", "Deployment support"],
     technologies: ["Next.js", "React", "TypeScript", "PostgreSQL"],
-    timeline: "3â€“8 weeks",
+    timeline: "3–8 weeks",
     startingPrice: "45000.00",
     sortOrder: 10,
     packages: [
@@ -100,7 +101,7 @@ const services = [
     description: "Storefront design, product catalog, order flows, payment integration boundaries, and operational setup.",
     features: ["Product catalog", "Cart and checkout", "Order workflows", "Analytics-ready tracking"],
     technologies: ["Next.js", "React", "TypeScript", "PostgreSQL"],
-    timeline: "5â€“10 weeks",
+    timeline: "5–10 weeks",
     startingPrice: "95000.00",
     sortOrder: 20,
     packages: [
@@ -116,7 +117,7 @@ const services = [
     description: "Technical audits, on-page optimization, content planning, structured data, and measurement setup.",
     features: ["Technical SEO", "On-page optimization", "Content roadmap", "Search reporting"],
     technologies: ["Search Console", "Analytics", "Schema.org"],
-    timeline: "4â€“12 weeks",
+    timeline: "4–12 weeks",
     startingPrice: "25000.00",
     sortOrder: 30,
     packages: [
@@ -132,7 +133,7 @@ const services = [
     description: "Workflow discovery, automation design, integration work, and safe AI-assisted operational tooling.",
     features: ["Workflow mapping", "Automation design", "API integrations", "Operational safeguards"],
     technologies: ["TypeScript", "REST APIs", "Webhooks", "AI APIs"],
-    timeline: "3â€“8 weeks",
+    timeline: "3–8 weeks",
     startingPrice: "65000.00",
     sortOrder: 40,
     packages: [
@@ -266,119 +267,7 @@ async function main(): Promise<void> {
         }
       }
 
-      const aiEmployees = [
-  {
-    name: "LEAFWEB Lead Generator AI",
-    type: "lead_generator",
-    displayName: "Lead Generator AI",
-    description: "Local AI employee responsible for lead qualification, scoring, enrichment, follow-ups, and sales pipeline assistance.",
-    capabilities: [
-      "lead_qualification",
-      "lead_scoring",
-      "lead_enrichment",
-      "opportunity_tracking",
-      "proposal_assistance",
-    ],
-    configuration: {
-      provider: "ollama",
-      model: "qwen3:8b",
-      endpoint: "http://localhost:11434",
-      temperature: 0.2,
-      autonomous: false,
-      requiresApproval: true,
-    },
-    status: "IDLE",
-    isActive: true,
-  },
-  {
-    name: "LEAFWEB Sales AI",
-    type: "sales",
-    displayName: "Sales AI",
-    description: "Local AI employee responsible for sales assistance, opportunity tracking, proposal support, and customer communication drafts.",
-    capabilities: [
-      "opportunity_tracking",
-      "proposal_assistance",
-    ],
-    configuration: {
-      provider: "ollama",
-      model: "qwen3:8b",
-      endpoint: "http://localhost:11434",
-      temperature: 0.2,
-      autonomous: false,
-      requiresApproval: true,
-    },
-    status: "IDLE",
-    isActive: true,
-  },
-  {
-    name: "LEAFWEB Project Manager AI",
-    type: "project_manager",
-    displayName: "Project Manager AI",
-    description: "Local AI employee responsible for project monitoring, task monitoring, milestone tracking, and risk detection.",
-    capabilities: [
-      "project_monitoring",
-      "task_monitoring",
-      "milestone_tracking",
-      "risk_detection",
-    ],
-    configuration: {
-      provider: "ollama",
-      model: "qwen3:8b",
-      endpoint: "http://localhost:11434",
-      temperature: 0.2,
-      autonomous: false,
-      requiresApproval: true,
-    },
-    status: "IDLE",
-    isActive: true,
-  },
-  {
-    name: "LEAFWEB AI CEO",
-    type: "ceo",
-    displayName: "AI CEO",
-    description: "Top-level local AI executive responsible for business strategy, KPI analysis, AI employee orchestration, delegation, prioritization, decision support, and approval-controlled execution.",
-    capabilities: [
-      "business_strategy",
-      "kpi_analysis",
-      "ai_orchestration",
-      "employee_delegation",
-      "task_prioritization",
-      "pipeline_oversight",
-      "project_oversight",
-      "risk_detection",
-      "decision_support",
-    ],
-    configuration: {
-      provider: "ollama",
-      model: "qwen3:8b",
-      endpoint: "http://localhost:11434",
-      temperature: 0.2,
-      autonomous: false,
-      requiresApproval: true,
-    },
-    status: "IDLE",
-    isActive: true,
-  },
-];
-
-for (const employeeData of aiEmployees) {
-  const existing = await tx.aIEmployee.findFirst({
-    where: { name: employeeData.name },
-    select: { id: true },
-  });
-
-  if (existing) {
-    await tx.aIEmployee.update({
-      where: { id: existing.id },
-      data: employeeData,
-    });
-  } else {
-    await tx.aIEmployee.create({
-      data: employeeData,
-    });
-  }
-}
-const superAdminRoleId = rolesBySlug.get(ROLE_SLUGS.SUPER_ADMIN)!.id;
+      const superAdminRoleId = rolesBySlug.get(ROLE_SLUGS.SUPER_ADMIN)!.id;
       const passwordHash = hashPassword(superAdminPassword);
       const existingUser = await tx.user.findUnique({ where: { email: superAdminEmail }, select: { id: true } });
       if (existingUser) {
@@ -397,10 +286,3 @@ main().catch(async (error) => {
   console.error(error);
   process.exitCode = 1;
 }).finally(async () => prisma.$disconnect());
-
-
-
-
-
-
-

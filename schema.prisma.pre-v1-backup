@@ -1,0 +1,135 @@
+model AIEmployee {
+  id              String   @id @default(uuid())
+  name            String
+  slug            String   @unique
+  role            String
+  description     String?
+  systemPrompt    String
+  model           String?
+  provider        String?
+  isActive        Boolean  @default(true)
+  configuration   Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
+
+  leadAssignments LeadAssignment[]
+  leadActivities  LeadActivity[]
+  followUps       LeadFollowUp[]
+  tasks           AIEmployeeTask[]
+  calls           LeadCall[]
+
+  @@index([isActive])
+  @@index([role])
+}
+
+model LeadAssignment {
+  id            String      @id @default(uuid())
+  leadId        String
+  aiEmployeeId  String?
+  userId        String?
+  assignedAt    DateTime    @default(now())
+  unassignedAt  DateTime?
+  reason        String?
+
+  lead          Lead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  aiEmployee    AIEmployee? @relation(fields: [aiEmployeeId], references: [id])
+  user          User?       @relation(fields: [userId], references: [id])
+
+  @@index([leadId])
+  @@index([aiEmployeeId])
+  @@index([userId])
+}
+
+model LeadActivity {
+  id           String           @id @default(uuid())
+  leadId       String
+  aiEmployeeId String?
+  userId       String?
+  type         LeadActivityType
+  summary      String
+  details      String?
+  metadata     Json?
+  createdAt    DateTime         @default(now())
+
+  lead         Lead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  aiEmployee   AIEmployee? @relation(fields: [aiEmployeeId], references: [id])
+  user         User?       @relation(fields: [userId], references: [id])
+
+  @@index([leadId, createdAt])
+  @@index([aiEmployeeId, createdAt])
+}
+
+model LeadFollowUp {
+  id           String         @id @default(uuid())
+  leadId       String
+  aiEmployeeId String?
+  userId       String?
+  scheduledAt  DateTime
+  completedAt  DateTime?
+  type         FollowUpType
+  notes        String?
+  status       FollowUpStatus @default(PENDING)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  lead         Lead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  aiEmployee   AIEmployee? @relation(fields: [aiEmployeeId], references: [id])
+  user         User?       @relation(fields: [userId], references: [id])
+
+  @@index([leadId, scheduledAt])
+  @@index([status, scheduledAt])
+}
+
+model LeadCall {
+  id           String        @id @default(uuid())
+  leadId       String
+  userId       String?
+  aiEmployeeId String?
+  provider     String?
+  callId       String?
+  direction    CallDirection
+  status       CallStatus
+  phoneNumber  String?
+  startedAt    DateTime?
+  endedAt      DateTime?
+  durationSec  Int?
+  recordingUrl String?
+  notes        String?
+  metadata     Json?
+  createdAt    DateTime      @default(now())
+
+  lead         Lead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  user         User?       @relation(fields: [userId], references: [id])
+  aiEmployee   AIEmployee? @relation(fields: [aiEmployeeId], references: [id])
+
+  @@index([leadId, createdAt])
+  @@index([userId])
+  @@index([aiEmployeeId])
+  @@index([callId])
+}
+
+model AIEmployeeTask {
+  id           String       @id @default(uuid())
+  aiEmployeeId String
+  leadId       String?
+  type         String
+  title        String
+  description  String?
+  status       AITaskStatus @default(PENDING)
+  priority     Int          @default(0)
+  scheduledAt  DateTime?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  result       Json?
+  error        String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  aiEmployee   AIEmployee @relation(fields: [aiEmployeeId], references: [id], onDelete: Cascade)
+  lead         Lead?      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([aiEmployeeId, status])
+  @@index([leadId])
+  @@index([status, scheduledAt])
+}
